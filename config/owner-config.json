@@ -1,0 +1,10 @@
+{
+  "DISCORD_CLIENT_ID": "",
+  "DISCORD_CLIENT_SECRET": "",
+  "DISCORD_BOT_TOKEN": "",
+  "DISCORD_REDIRECT_URI": "axiom://auth",
+  "OWNER_DISCORD_ID": "",
+  "GUILD_ID": "",
+  "DATABASE_URL": "",
+  "GUILD_INVITE_URL": ""
+}

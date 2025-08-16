@@ -1,0 +1,55 @@
+const path = require("path");
+const { FusesPlugin } = require("@electron-forge/plugin-fuses");
+const { FuseV1Options, FuseVersion } = require("@electron/fuses");
+
+module.exports = {
+  packagerConfig: {
+    asar: {
+      unpack: "src/assets/**",
+    },
+    icon: path.resolve(__dirname, "src/assets/icon"),
+  },
+
+  rebuildConfig: {},
+
+  makers: [
+    {
+      name: "@electron-forge/maker-squirrel",
+      config: {
+        name: "axiom",
+        setupIcon: path.resolve(__dirname, "src/assets/icon.ico"),
+        iconUrl: "https://files.catbox.moe/80ui9w.ico",
+        shortcutName: "Axiom",
+        loadingGif: undefined,
+      },
+    },
+    {
+      name: "@electron-forge/maker-zip",
+      platforms: ["darwin"],
+    },
+    {
+      name: "@electron-forge/maker-deb",
+      config: {},
+    },
+    {
+      name: "@electron-forge/maker-rpm",
+      config: {},
+    },
+  ],
+
+  plugins: [
+    {
+      name: "@electron-forge/plugin-auto-unpack-natives",
+      config: {},
+    },
+    new FusesPlugin({
+      version: FuseVersion.V1,
+      [FuseV1Options.RunAsNode]: false,
+      [FuseV1Options.EnableCookieEncryption]: true,
+      [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+      [FuseV1Options.EnableNodeCliInspectArguments]: false,
+      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+      [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    }),
+  ],
+};

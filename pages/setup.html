@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Axiom Setup</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               img-src 'self' data: blob:;
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+               font-src 'self' data: https://fonts.gstatic.com;
+               script-src 'self' 'unsafe-inline';
+               connect-src 'self' https://discord.com https://*.discord.com;"
+    />
+    <link rel="stylesheet" href="styles/setup.css" />
+    <link rel="stylesheet" href="styles/global.css" />
+    <link rel="icon" type="image/x-icon" href="../src/assets/icon.ico" />
+  </head>
+  <body>
+    <div
+      id="no-internet-warning"
+      style="
+        display: none;
+        padding: 15px;
+        background: #ffcccc;
+        color: #900;
+        text-align: center;
+      "
+    >
+      ❌ No internet connection detected. This application requires an active
+      internet connection to continue.
+    </div>
+
+    <div class="wizard-container">
+      <div class="wizard-sidebar">
+        <img
+          src="../src/assets/axiom_logo.png"
+          alt="Axiom Logo"
+          class="sidebar-logo"
+        />
+        <ul>
+          <li class="active">Discord App</li>
+          <li>Guild Settings</li>
+          <li>Database</li>
+        </ul>
+      </div>
+
+      <div class="wizard-content">
+        <form id="setupForm" autocomplete="off">
+          <div class="wizard-step" data-step="1">
+            <h3>Discord Application Setup</h3>
+
+            <label for="clientId">Client ID</label>
+            <input type="text" id="clientId" />
+
+            <label for="clientSecret">Client Secret</label>
+            <input type="text" id="clientSecret" />
+
+            <label for="redirectUri">Redirect URI</label>
+            <p style="font-size: 14px; color: #aaa; margin: 6px 0 8px">
+              👉 The Redirect URI is locked to
+              <code>axiom://auth</code>. Add it in your
+              <a
+                href="https://discord.com/developers/applications"
+                target="_blank"
+                style="color: #7aa2f7"
+                >Discord Developer Portal</a
+              >.
+            </p>
+            <input
+              type="text"
+              id="redirectUri"
+              value="axiom://auth"
+              readonly
+              style="opacity: 0.75; pointer-events: none"
+            />
+
+            <label for="botToken">Bot Token</label>
+            <input type="text" id="botToken" />
+          </div>
+
+          <div class="wizard-step hidden" data-step="2">
+            <h3>Discord Guild Settings</h3>
+
+            <label for="ownerId">Owner Discord ID</label>
+            <input type="text" id="ownerId" />
+
+            <label for="guildId">Discord Server Guild ID</label>
+            <input type="text" id="guildId" />
+
+            <label for="inviteUrl">Invite URL for your server</label>
+            <input type="text" id="inviteUrl" />
+          </div>
+
+          <div class="wizard-step hidden" data-step="3">
+            <h3>Database Configuration</h3>
+
+            <label for="dbUrl">DATABASE_URL</label>
+            <input type="text" id="dbUrl" />
+          </div>
+
+          <div class="wizard-buttons">
+            <button type="button" id="prevStep" disabled>← Back</button>
+            <button type="button" id="nextStep">Next →</button>
+            <button type="submit" id="finishStep" class="hidden">
+              💾 Save & Start
+            </button>
+          </div>
+
+          <textarea id="setup-output" readonly class="log-output"></textarea>
+          <button id="continueBtn" style="display: none; margin-top: 10px">
+            Continue →
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const hasApi = typeof window.api !== "undefined" && window.api !== null;
+        const bridge = window.__AXIOM_BRIDGE__ || {
+          isOnline: () => {
+            try {
+              if (hasApi && typeof window.api.isOnline === "function")
+                return window.api.isOnline();
+            } catch {}
+            return navigator.onLine;
+          },
+          onNetworkChange: (on, off) => {
+            if (hasApi && typeof window.api.onNetworkChange === "function") {
+              return window.api.onNetworkChange(on, off);
+            } else {
+              window.addEventListener("online", on);
+              window.addEventListener("offline", off);
+              return () => {
+                window.removeEventListener("online", on);
+                window.removeEventListener("offline", off);
+              };
+            }
+          },
+          saveOwnerConfig: (cfg) => {
+            if (hasApi && typeof window.api.saveOwnerConfig === "function") {
+              return window.api.saveOwnerConfig(cfg);
+            }
+            return Promise.resolve(true);
+          },
+          startBot: () => {
+            if (hasApi && typeof window.api.startBot === "function")
+              return window.api.startBot();
+          },
+          receive: (channel, cb) => {
+            if (hasApi && typeof window.api.receive === "function")
+              return window.api.receive(channel, cb);
+            return () => {};
+          },
+          getOwnerConfig: () => {
+            if (hasApi && typeof window.api.getOwnerConfig === "function")
+              return window.api.getOwnerConfig();
+            return Promise.resolve(null);
+          },
+        };
+        window.__AXIOM_BRIDGE__ = bridge;
+
+        const netWarn = document.getElementById("no-internet-warning");
+        const setNet = () =>
+          (netWarn.style.display = bridge.isOnline() ? "none" : "block");
+        setNet();
+        bridge.onNetworkChange(
+          () => (netWarn.style.display = "none"),
+          () => (netWarn.style.display = "block")
+        );
+
+        function sanitizeDatabaseUrl(url) {
+          return url
+            .trim()
+            .replace(/^DATABASE_URL=/i, "")
+            .replace(/^"(.*)"$/, "$1");
+        }
+
+        const steps = Array.from(document.querySelectorAll(".wizard-step"));
+        const sidebarItems = document.querySelectorAll(".wizard-sidebar li");
+        let current = 0;
+
+        function updateStep() {
+          steps.forEach((step, i) =>
+            step.classList.toggle("hidden", i !== current)
+          );
+          sidebarItems.forEach((li, i) =>
+            li.classList.toggle("active", i === current)
+          );
+          document.getElementById("prevStep").disabled = current === 0;
+
+          const nextBtn = document.getElementById("nextStep");
+          const finishBtn = document.getElementById("finishStep");
+          nextBtn.style.display =
+            current === steps.length - 1 ? "none" : "inline-block";
+          finishBtn.classList.toggle("hidden", current !== steps.length - 1);
+        }
+
+        document.getElementById("nextStep").onclick = () => {
+          if (current < steps.length - 1) current++;
+          updateStep();
+        };
+        document.getElementById("prevStep").onclick = () => {
+          if (current > 0) current--;
+          updateStep();
+        };
+
+        bridge.receive("setup-log", (log) => {
+          const ta = document.getElementById("setup-output");
+          ta.value += (log || "") + "\n";
+          ta.scrollTop = ta.scrollHeight;
+        });
+
+        if (hasApi && typeof window.api.onLog === "function") {
+          window.api.onLog((line) => {
+            const ta = document.getElementById("setup-output");
+            if (!ta) return;
+            ta.value += (line || "") + "\n";
+            ta.scrollTop = ta.scrollHeight;
+          });
+        }
+
+        if (hasApi && typeof window.api.onStatusChange === "function") {
+          window.api.onStatusChange((st) => {
+            const ta = document.getElementById("setup-output");
+            if (!ta) return;
+            ta.value += `ℹ Status: ${st}\n`;
+            ta.scrollTop = ta.scrollHeight;
+          });
+        }
+
+        const REDIRECT_LOCK = "axiom://auth";
+        const redirectInput = document.getElementById("redirectUri");
+        function lockRedirectUri() {
+          if (!redirectInput) return;
+          redirectInput.value = REDIRECT_LOCK;
+        }
+        redirectInput?.addEventListener("input", lockRedirectUri);
+        redirectInput?.addEventListener("paste", (e) => {
+          e.preventDefault();
+          lockRedirectUri();
+        });
+        lockRedirectUri();
+
+        document
+          .getElementById("setupForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            if (!bridge.isOnline()) {
+              alert(
+                "🚫 No internet connection. Setup cannot continue without an active internet connection."
+              );
+              return;
+            }
+
+            const rawDbUrl = document.getElementById("dbUrl").value;
+            const sanitizedDbUrl = sanitizeDatabaseUrl(rawDbUrl);
+
+            const config = {
+              DISCORD_CLIENT_ID: document.getElementById("clientId").value,
+              DISCORD_CLIENT_SECRET:
+                document.getElementById("clientSecret").value,
+              DISCORD_BOT_TOKEN: document.getElementById("botToken").value,
+
+              DISCORD_REDIRECT_URI: REDIRECT_LOCK,
+
+              OWNER_DISCORD_ID: document.getElementById("ownerId").value,
+              GUILD_ID: document.getElementById("guildId").value,
+              GUILD_INVITE_URL: document.getElementById("inviteUrl").value,
+              DATABASE_URL: sanitizedDbUrl,
+            };
+
+            const validPrefixes = [
+              "postgresql://",
+              "prisma+postgresql://",
+              "prisma+postgres://",
+            ];
+            if (!validPrefixes.some((p) => sanitizedDbUrl.startsWith(p))) {
+              alert("❌ Invalid DATABASE_URL format.");
+              return;
+            }
+
+            try {
+              const ok = await bridge.saveOwnerConfig(config);
+              if (ok) {
+                bridge.startBot?.();
+                setTimeout(() => {
+                  location.href = "dashboard.html";
+                }, 1200);
+              } else {
+                alert("❌ Failed to save config. Check your inputs.");
+              }
+            } catch (err) {
+              console.error(err);
+              alert("❌ Unexpected error while saving config.");
+            }
+          });
+
+        (async () => {
+          try {
+            const saved = await bridge.getOwnerConfig();
+            if (!saved) return;
+
+            document.getElementById("clientId").value =
+              saved.DISCORD_CLIENT_ID || "";
+            document.getElementById("clientSecret").value =
+              saved.DISCORD_CLIENT_SECRET || "";
+            document.getElementById("botToken").value =
+              saved.DISCORD_BOT_TOKEN || "";
+            document.getElementById("ownerId").value =
+              saved.OWNER_DISCORD_ID || "";
+            document.getElementById("guildId").value = saved.GUILD_ID || "";
+            document.getElementById("inviteUrl").value =
+              saved.GUILD_INVITE_URL || "";
+            document.getElementById("dbUrl").value = saved.DATABASE_URL || "";
+
+            lockRedirectUri();
+          } catch {}
+        })();
+
+        updateStep();
+      })();
+    </script>
+  </body>
+</html>

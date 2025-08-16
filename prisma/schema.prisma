@@ -1,0 +1,17 @@
+generator client {
+  provider      = "prisma-client-js"
+  engineType    = "binary"
+  // βοηθάει στα builds σε Windows
+  binaryTargets = ["windows", "native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://user:pass@localhost:5432/db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  discordId String   @unique
+  createdAt DateTime @default(now())
+}

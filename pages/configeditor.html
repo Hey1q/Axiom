@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Config Editor - Axiom</title>
+    <link rel="stylesheet" href="styles/configeditor.css" />
+  </head>
+  <body>
+    <main class="config-wrap">
+      <div class="config-head">
+        <h2>⚙️ Config Editor</h2>
+        <a href="dashboard.html" class="back">← Back to Dashboard</a>
+      </div>
+
+      <p class="hint muted">
+        Edit the same configuration saved by <code>setup.html</code>. Clicking
+        <b>Save Config</b> will overwrite <code>owner-config.json</code> and
+        then the bot will relaunch to apply changes.
+      </p>
+
+      <form id="cfgForm" autocomplete="off">
+        <div class="grid">
+          <div>
+            <label for="clientId">Discord Client ID</label>
+            <input type="text" id="clientId" placeholder="" />
+            <div class="hint">
+              From <i>Discord Developer Portal → Applications → OAuth2</i>.
+            </div>
+          </div>
+
+          <div>
+            <label for="clientSecret">Discord Client Secret</label>
+            <input type="text" id="clientSecret" placeholder="" />
+            <div class="hint">Your app's secret (keep it private).</div>
+          </div>
+
+          <div class="full">
+            <label for="botToken">Discord Bot Token</label>
+            <input type="text" id="botToken" placeholder="" />
+            <div class="hint">
+              From the <i>Bot</i> tab → <i>Reset Token</i>.
+            </div>
+          </div>
+
+          <div>
+            <label for="guildId">Guild ID</label>
+            <input type="text" id="guildId" placeholder="" />
+            <div class="hint">
+              (Server ID) — Right click on your Discord server (Developer Mode
+              enabled) → Copy&nbsp;ID.
+            </div>
+          </div>
+
+          <div>
+            <label for="ownerId">Owner Discord ID</label>
+            <input type="text" id="ownerId" placeholder="" />
+            <div class="hint">Your Discord user ID (owner account).</div>
+          </div>
+
+          <div class="full">
+            <label for="inviteUrl">Guild Invite URL</label>
+            <input type="text" id="inviteUrl" placeholder="" />
+            <div class="hint">
+              E.g. <code>https://discord.gg/xxxx</code>. Used by the “Discord
+              Invite” button.
+            </div>
+          </div>
+
+          <div class="full">
+            <label for="dbUrl">Database URL</label>
+            <input type="text" id="dbUrl" placeholder="" />
+            <div class="hint">
+              Accepted prefixes:
+              <code>postgresql://</code>, <code>prisma+postgresql://</code>,
+              <code>prisma+postgres://</code>. If you paste a full
+              <code>DATABASE_URL=...</code> line, it is cleaned automatically.
+            </div>
+          </div>
+
+          <div class="full">
+            <label for="redirectUri">Discord Redirect URI (locked)</label>
+            <input
+              type="text"
+              id="redirectUri"
+              value="axiom://auth"
+              readonly
+              style="opacity: 0.75; pointer-events: none"
+            />
+            <div class="hint">
+              Redirect URI is <b>fixed</b>: <code>axiom://auth</code>. Add it to
+              OAuth2 Redirects in the Developer Portal.
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn primary" id="save">
+            💾 Save Config
+          </button>
+        </div>
+
+        <p id="status" class="hint muted" style="margin-top: 14px">
+          Editing config will overwrite <code>owner-config.json</code>
+        </p>
+      </form>
+    </main>
+
+    <div id="relaunch-modal" class="modal" aria-hidden="true">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rl-title"
+      >
+        <h3 id="rl-title">Applying changes…</h3>
+        <p id="rl-text">
+          <span class="spinner"></span>We will close <b>Axiom.exe</b> and
+          relaunch the bot to apply your new config.
+        </p>
+        <div class="modal-footer">
+          <button type="button" id="rl-close" class="btn" style="display: none">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const hasApi = typeof window.api !== "undefined" && window.api !== null;
+        const el = (id) => document.getElementById(id);
+        const statusEl = el("status");
+
+        const ok = (m) => {
+          statusEl.textContent = "✔ " + m;
+          statusEl.className = "hint ok";
+        };
+        const bad = (m) => {
+          statusEl.textContent = "✖ " + m;
+          statusEl.className = "hint danger";
+        };
+        const info = (m) => {
+          statusEl.textContent = m;
+          statusEl.className = "hint muted";
+        };
+
+        const modal = el("relaunch-modal");
+        const rlText = el("rl-text");
+        const rlClose = el("rl-close");
+        function showModal(msg) {
+          rlText.innerHTML = '<span class="spinner"></span>' + msg;
+          rlClose.style.display = "none";
+          modal.classList.add("show");
+          modal.setAttribute("aria-hidden", "false");
+        }
+        function updateModal(text, withSpinner = true) {
+          rlText.innerHTML =
+            (withSpinner ? '<span class="spinner"></span>' : "") + text;
+        }
+        function showClose(label = "Close") {
+          rlClose.textContent = label;
+          rlClose.style.display = "inline-flex";
+        }
+        rlClose.addEventListener("click", () => {
+          modal.classList.remove("show");
+          modal.setAttribute("aria-hidden", "true");
+          window.location.href = "dashboard.html";
+        });
+
+        function sanitizeDatabaseUrl(url) {
+          return (url || "")
+            .trim()
+            .replace(/^DATABASE_URL=/i, "")
+            .replace(/^"(.*)"$/, "$1");
+        }
+
+        function placeholderize(input, value) {
+          input.placeholder = value || "";
+          input.value = "";
+          input.dataset.fallback = value || "";
+          input.addEventListener("blur", () => {
+            if (!input.value) input.placeholder = input.dataset.fallback || "";
+          });
+        }
+
+        const REDIRECT_LOCK = "axiom://auth";
+        const redirectInput = el("redirectUri");
+        const lockRedirect = () => {
+          redirectInput.value = REDIRECT_LOCK;
+        };
+        redirectInput?.addEventListener("input", lockRedirect);
+        redirectInput?.addEventListener("paste", (e) => {
+          e.preventDefault();
+          lockRedirect();
+        });
+        lockRedirect();
+
+        (async () => {
+          try {
+            if (!hasApi || typeof window.api.getOwnerConfig !== "function")
+              return;
+            const cfg = await window.api.getOwnerConfig();
+            if (!cfg) return;
+
+            placeholderize(el("clientId"), cfg.DISCORD_CLIENT_ID);
+            placeholderize(el("clientSecret"), cfg.DISCORD_CLIENT_SECRET);
+            placeholderize(el("botToken"), cfg.DISCORD_BOT_TOKEN);
+            placeholderize(el("guildId"), cfg.GUILD_ID);
+            placeholderize(el("ownerId"), cfg.OWNER_DISCORD_ID);
+            placeholderize(el("inviteUrl"), cfg.GUILD_INVITE_URL);
+            placeholderize(el("dbUrl"), cfg.DATABASE_URL);
+
+            lockRedirect();
+            info("Loaded current configuration (tap a field to edit).");
+          } catch (e) {
+            console.error(e);
+            bad("Could not load current config.");
+          }
+        })();
+
+        el("cfgForm").addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+
+          if (!hasApi || typeof window.api.saveOwnerConfig !== "function") {
+            bad("Bridge API not available.");
+            return;
+          }
+
+          const getOrFallback = (id) => {
+            const i = el(id);
+            const v = (i.value || "").trim();
+            return v || (i.placeholder || "").trim();
+          };
+
+          const cfg = {
+            DISCORD_CLIENT_ID: getOrFallback("clientId"),
+            DISCORD_CLIENT_SECRET: getOrFallback("clientSecret"),
+            DISCORD_BOT_TOKEN: getOrFallback("botToken"),
+            DISCORD_REDIRECT_URI: REDIRECT_LOCK,
+            OWNER_DISCORD_ID: getOrFallback("ownerId"),
+            GUILD_ID: getOrFallback("guildId"),
+            GUILD_INVITE_URL: getOrFallback("inviteUrl"),
+            DATABASE_URL: sanitizeDatabaseUrl(getOrFallback("dbUrl")),
+          };
+
+          const okPrefixes = [
+            "postgresql://",
+            "prisma+postgresql://",
+            "prisma+postgres://",
+          ];
+          if (
+            cfg.DATABASE_URL &&
+            !okPrefixes.some((p) => cfg.DATABASE_URL.startsWith(p))
+          ) {
+            bad("Invalid DATABASE_URL format.");
+            return;
+          }
+
+          try {
+            const saved = await window.api.saveOwnerConfig(cfg);
+            if (!saved) {
+              bad("Save failed. Check logs.");
+              return;
+            }
+            ok("Configuration saved.");
+
+            showModal(
+              "We will close Axiom.exe and relaunch the bot to apply your new config…"
+            );
+            try {
+              if (typeof window.api.stopBot === "function") {
+                updateModal("Stopping Axiom.exe…");
+                await Promise.resolve(window.api.stopBot());
+              }
+              await new Promise((r) => setTimeout(r, 900));
+              if (typeof window.api.startBot === "function") {
+                updateModal("Starting Axiom.exe…");
+                await Promise.resolve(window.api.startBot());
+              }
+              updateModal(
+                "Axiom.exe restarted successfully. Changes are now active.",
+                false
+              );
+              showClose("Back to Dashboard");
+            } catch (reErr) {
+              console.error(reErr);
+              updateModal(
+                "Restart failed. You can manually start the bot from the Dashboard.",
+                false
+              );
+              showClose("OK");
+            }
+          } catch (e) {
+            console.error(e);
+            bad("Unexpected error while saving.");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

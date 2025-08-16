@@ -1,0 +1,80 @@
+.alert-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.notification {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 12px;
+  min-width: 280px;
+  max-width: 340px;
+  color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.25);
+  animation: slideIn 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  transition: opacity 0.3s ease;
+}
+
+.notification .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 16px;
+}
+
+.notification .icon img {
+  width: 100%;
+  height: 100%;
+}
+
+.notification .content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 10px 0 0;
+}
+
+.notification .content h4 {
+  margin: 0 auto;
+  font-size: 1rem;
+  font-weight: bold;
+  line-height: 1.3;
+}
+
+.notification .content p {
+  margin: 4px auto 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.notification .close {
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #fff;
+  margin-left: 10px;
+}
+
+.notification.success  { background: linear-gradient(45deg, #00966B, #197744); }
+.notification.fail     { background: linear-gradient(45deg, #B9375E, #FF5B5B); }
+.notification.warning  { background: linear-gradient(45deg, #FFA500, #EC8E2C); }
+.notification.help     { background: linear-gradient(45deg, #2C8AEC, #00AEEF); }
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}

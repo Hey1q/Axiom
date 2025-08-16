@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Axiom</title>
+    <link rel="stylesheet" href="styles/global.css" />
+    <link rel="stylesheet" href="styles/dashboard.css" />
+    <link rel="stylesheet" href="alerts/notification.css" />
+    <style>
+      .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .nav-link img.icon-inline {
+        height: 18px;
+        width: 18px;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="angled-header">
+      <header class="top-header">
+        <div class="header-center">
+          <a href="index.html" class="nav-link" id="nav-home">
+            <img src="../src/assets/home.png" alt="Home" class="icon-inline" />
+            <span>Home</span>
+          </a>
+          <span class="user-info">Welcome to Axiom Dashboard</span>
+        </div>
+      </header>
+    </div>
+
+    <section class="actions">
+      <button id="start-bot">Start Bot</button>
+      <button id="stop-bot">Stop Bot</button>
+    </section>
+
+    <section class="owner-only" id="owner-panel">
+      <div class="card-slider-wrapper">
+        <button class="scroll-btn scroll-left" onclick="shiftCard(-1)">
+          ‹
+        </button>
+        <button class="scroll-btn scroll-right" onclick="shiftCard(1)">
+          ›
+        </button>
+
+        <div class="card-slider" id="card-slider">
+          <div class="card ghost-card"></div>
+
+          <div class="card gradient1" id="staff-gate-card">
+            <img
+              src="../src/assets/staff_gate.png"
+              alt="Staff Gate Icon"
+              class="icon-img-large"
+            />
+            <div class="card-label">Access Staff Gate</div>
+          </div>
+
+          <div class="card gradient2" id="giveaway-gate-card">
+            <img
+              src="../src/assets/giveaway.png"
+              alt="Giveaway Icon"
+              class="icon-img-large"
+            />
+            <div class="card-label">Giveaway Logs</div>
+          </div>
+
+          <div class="card gradient3" id="tickets-logs-card">
+            <img
+              src="../src/assets/tickets.png"
+              alt="Tickets Logs Icon"
+              class="icon-img-large"
+            />
+            <div class="card-label">Tickets Logs</div>
+          </div>
+
+          <div class="card gradient4" id="embed-card">
+            <img
+              src="../src/assets/embed.png"
+              alt="Embed Icon"
+              class="icon-img-large"
+            />
+            <div class="card-label">Embed Builder</div>
+          </div>
+
+          <div class="card gradient5" id="config-editor-card">
+            <img
+              src="../src/assets/config.png"
+              alt="Config Icon"
+              class="icon-img-large"
+            />
+            <div class="card-label">Config Editor</div>
+          </div>
+
+          <div class="card gradient6">System Info 4</div>
+          <div class="card gradient7">System Info 5</div>
+          <div class="card gradient8">System Info 6</div>
+          <div class="card gradient9">System Info 7</div>
+          <div class="card gradient10">System Info 8</div>
+
+          <div class="card ghost-card"></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="alert-container" class="alert-container"></div>
+
+    <script src="alerts/notification.js"></script>
+    <script>
+      function safeNotify(type, title, message) {
+        if (typeof showNotification === "function") {
+          showNotification(type, title, message);
+        } else {
+          console.log("[" + type + "] " + title + ": " + message);
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        var hasApi = typeof window.api !== "undefined" && window.api !== null;
+
+        var startBtn = document.getElementById("start-bot");
+        var stopBtn = document.getElementById("stop-bot");
+
+        startBtn.addEventListener("click", function () {
+          if (!hasApi || typeof window.api.startBot !== "function") {
+            safeNotify(
+              "fail",
+              "Unavailable",
+              "API bridge not available in this build."
+            );
+            return;
+          }
+          window.api.startBot();
+        });
+
+        stopBtn.addEventListener("click", function () {
+          if (!hasApi || typeof window.api.stopBot !== "function") {
+            safeNotify(
+              "fail",
+              "Unavailable",
+              "API bridge not available in this build."
+            );
+            return;
+          }
+          window.api.stopBot();
+        });
+
+        document
+          .getElementById("staff-gate-card")
+          .addEventListener("click", function () {
+            window.location.href = "staffgate.html";
+          });
+        document
+          .getElementById("giveaway-gate-card")
+          .addEventListener("click", function () {
+            window.location.href = "giveawaylogs.html";
+          });
+        document
+          .getElementById("tickets-logs-card")
+          .addEventListener("click", function () {
+            window.location.href = "ticketslogs.html";
+          });
+        document
+          .getElementById("embed-card")
+          .addEventListener("click", function () {
+            window.location.href = "embedbuilder.html";
+          });
+        document
+          .getElementById("config-editor-card")
+          .addEventListener("click", function () {
+            window.location.href = "configeditor.html";
+          });
+
+        var cardSlider = document.getElementById("card-slider");
+        cardSlider.addEventListener("scroll", updateCardTransforms);
+        window.addEventListener("resize", updateCardTransforms);
+        updateCardTransforms();
+
+        var firstActualCard = cardSlider.querySelector(
+          ".card:not(.ghost-card):first-of-type"
+        );
+        if (firstActualCard) {
+          firstActualCard.classList.add("active");
+          var sliderCenter = cardSlider.offsetWidth / 2;
+          var cardCenter =
+            firstActualCard.offsetLeft + firstActualCard.offsetWidth / 2;
+          var scrollTo = cardCenter - sliderCenter;
+          cardSlider.scrollTo({ left: scrollTo, behavior: "auto" });
+        }
+      });
+
+      function updateCardTransforms() {
+        var slider = document.getElementById("card-slider");
+        var cards = slider.querySelectorAll(".card");
+        var sliderRect = slider.getBoundingClientRect();
+        var centerX = sliderRect.left + sliderRect.width / 2;
+
+        var closestCard = null;
+        var closestDistance = Infinity;
+
+        cards.forEach(function (card) {
+          if (card.classList.contains("ghost-card")) {
+            card.style.transform = "none";
+            card.style.opacity = "0";
+            card.style.zIndex = "unset";
+            card.classList.remove("active");
+            return;
+          }
+
+          var cardRect = card.getBoundingClientRect();
+          var cardCenter = cardRect.left + cardRect.width / 2;
+          var offset = (centerX - cardCenter) / sliderRect.width;
+
+          var distance = Math.abs(centerX - cardCenter);
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestCard = card;
+          }
+
+          if (card !== closestCard) {
+            var rotateY = offset * 30;
+            var scale = 1 - Math.min(Math.abs(offset) * 0.4, 0.4);
+            card.style.transform =
+              "rotateY(" + rotateY + "deg) scale(" + scale + ")";
+            card.style.opacity = String(1 - Math.abs(offset) * 0.6);
+            card.style.zIndex = String(
+              100 - Math.round(Math.abs(offset) * 100)
+            );
+          } else {
+            card.style.transform = "rotateY(0deg) scale(1)";
+            card.style.opacity = "1";
+            card.style.zIndex = "200";
+          }
+        });
+
+        cards.forEach(function (card) {
+          card.classList.remove("active");
+        });
+        if (closestCard && !closestCard.classList.contains("ghost-card")) {
+          closestCard.classList.add("active");
+        }
+      }
+
+      function shiftCard(direction) {
+        var slider = document.getElementById("card-slider");
+        var allCards = Array.from(slider.querySelectorAll(".card"));
+        var actualCards = allCards.filter(function (c) {
+          return !c.classList.contains("ghost-card");
+        });
+        var activeCard = slider.querySelector(".card.active");
+
+        var currentIndex = actualCards.indexOf(activeCard);
+        if (currentIndex === -1) currentIndex = 0;
+
+        var newIndex = currentIndex + direction;
+        newIndex = Math.max(0, Math.min(newIndex, actualCards.length - 1));
+
+        var targetCard = actualCards[newIndex];
+        var cardCenter = targetCard.offsetLeft + targetCard.offsetWidth / 2;
+        var scrollTo = cardCenter - slider.offsetWidth / 2;
+
+        slider.scrollTo({ left: scrollTo, behavior: "smooth" });
+      }
+    </script>
+  </body>
+</html>

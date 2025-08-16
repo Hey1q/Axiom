@@ -1,0 +1,88 @@
+{
+  "name": "axiom",
+  "version": "1.0.0",
+  "description": "Axiom – Modern Discord bot manager for Windows (EXE application) with advanced features.",
+  "main": "src/main.js",
+  "author": "Axiom",
+  "scripts": {
+    "start": "electron .",
+    "generate": "npx prisma generate",
+    "dist": "npm run generate && electron-builder",
+    "deploy": "node deploy-commands.js"
+  },
+  "build": {
+    "appId": "com.axiom.bot",
+    "productName": "Axiom Discord bot",
+    "artifactName": "Axiom-Installer.${ext}",
+    "copyright": "Axiom. All rights reserved.",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "pages/**/*",
+      "config/**/*",
+      "prisma/schema.prisma",
+      "node_modules/@prisma/client/**/*",
+      "node_modules/.prisma/client/**/*",
+      "node_modules/open/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/@prisma/client/**/*",
+      "node_modules/.prisma/client/**/*",
+      "node_modules/open/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/@prisma/client",
+        "to": "node_modules/@prisma/client"
+      },
+      {
+        "from": "node_modules/.prisma/client",
+        "to": "node_modules/.prisma/client"
+      },
+      {
+        "from": "node_modules/open",
+        "to": "node_modules/open"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "src/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "installerIcon": "src/assets/icon.ico",
+      "uninstallerIcon": "src/assets/icon.ico",
+      "installerHeaderIcon": "src/assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Axiom",
+      "uninstallDisplayName": "Axiom Discord bot",
+      "runAfterFinish": true,
+      "allowElevation": true,
+      "perMachine": true,
+      "include": "build/uninstaller.nsh"
+    },
+    "npmRebuild": false
+  },
+  "dependencies": {
+    "@prisma/client": "^6.14.0",
+    "bcryptjs": "^3.0.2",
+    "discord.js": "^14.21.0",
+    "form-data": "^4.0.3",
+    "node-fetch": "^2.7.0",
+    "open": "^10.2.0",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
+    "speakeasy": "^2.0.0"
+  },
+  "devDependencies": {
+    "electron": "^36.6.0",
+    "electron-builder": "^24.13.3",
+    "prisma": "^6.14.0"
+  }
+}

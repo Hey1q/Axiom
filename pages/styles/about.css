@@ -1,0 +1,57 @@
+body {
+  background-color: #0a0f1a;
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.about-hero {
+  padding: 60px 20px 60px;
+  text-align: center;
+}
+
+.about-logo {
+  width: 220px;
+  margin-bottom: 16px;
+}
+
+.bottom-sheet {
+  background: rgba(10, 15, 25, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 32px 24px;
+  border-radius: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  box-shadow: 0 -6px 30px rgba(0, 0, 0, 0.5);
+}
+
+.bottom-sheet h2 {
+  font-size: 28px;
+  margin-bottom: 16px;
+  color: #00aaff;
+}
+
+.bottom-sheet p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #cccccc;
+}
+
+.menu-button {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: rgba(0, 170, 255, 0.1);
+  border: 1px solid #00aaff;
+  transition: all 0.2s ease-in-out;
+  margin-top: 32px;
+}
+
+.menu-button:hover {
+  background-color: #00aaff;
+  color: #ffffff;
+}

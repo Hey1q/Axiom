@@ -1,0 +1,195 @@
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  font-size: 20px;
+  text-decoration: none;
+  color: #ffffff;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.nav-button {
+  padding: 10px 20px;
+  border: 1px solid #00aaff;
+  color: #00aaff;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover {
+  background-color: #00aaff;
+  color: #ffffff;
+}
+
+.hero-section {
+  padding: 100px 0;
+  text-align: center;
+}
+
+.hero-logo {
+  width: 180px;
+  margin-bottom: 20px;
+  animation: fadeIn 1.2s ease-in-out;
+  filter: none;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(to right, #00aaff, #00ffd5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 20px;
+  color: #a0a0a0;
+  transition: opacity 0.5s ease-in-out;
+  min-height: 28px;
+}
+
+.bottom-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: none;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.hero-menu {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 16px;
+  padding: 16px;
+  margin: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 140px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  color: #ffffff;
+  background-color: rgba(0, 170, 255, 0.1);
+  border: 1px solid #00aaff;
+  transition: all 0.2s ease-in-out;
+}
+
+.menu-button:hover {
+  background-color: #00aaff;
+  color: #ffffff;
+}
+
+.menu-button img.button-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+#donate-btn,
+#terms-btn,
+#about-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#donate-btn .button-icon,
+#terms-btn .button-icon,
+#about-btn .button-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.admin-wrapper {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.admin-wrapper .menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.admin-wrapper .menu-button .button-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.meta-support {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  background: rgba(22, 27, 34, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 999;
+}
+
+.support-block,
+.donate-block {
+  color: #ffffff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
