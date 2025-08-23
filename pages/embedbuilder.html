@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Axiom • Embed Builder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles/global.css" />
+    <link rel="stylesheet" href="styles/embedbuilder.css" />
+    <link rel="stylesheet" href="alerts/notification.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <a class="back" href="dashboard.html">← Back</a>
+        <span class="chip">Embed Builder</span>
+        <span class="muted"
+          >Create & send Discord embeds directly from Axiom.</span
+        >
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <h2 class="section-title">
+            <span class="icon">📡</span>
+            Channel Target
+          </h2>
+          <div class="row">
+            <div>
+              <label for="channel">Channel</label>
+              <select id="channel" class="control select">
+                <option value="">(loading…)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="mention">Mention (optional)</label>
+              <div class="input-group" data-fixed>
+                <select
+                  id="mention"
+                  class="control select"
+                  aria-label="Mention preset"
+                >
+                  <option value="">None</option>
+                  <option value="everyone">@everyone</option>
+                  <option value="here">@here</option>
+                </select>
+                <input
+                  id="mentionRole"
+                  class="control"
+                  placeholder="Role ID (optional)"
+                  aria-label="Role ID"
+                />
+              </div>
+              <div class="muted">
+                If you enter a Role ID, it will override the dropdown selection.
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h2>Embed</h2>
+          <div class="row">
+            <div>
+              <div class="label-row">
+                <label for="title">Title</label>
+                <span id="cntTitle" class="counter"></span>
+              </div>
+              <input id="title" class="control" maxlength="256" />
+            </div>
+            <div>
+              <label for="url">URL</label>
+              <input id="url" class="control" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div>
+            <div class="label-row">
+              <label for="description">Description</label>
+              <span id="cntDescription" class="counter"></span>
+            </div>
+            <textarea
+              id="description"
+              class="control textarea"
+              maxlength="4096"
+              placeholder="Embed description..."
+            ></textarea>
+          </div>
+
+          <div class="row-3">
+            <div>
+              <label for="color">Color</label>
+              <input
+                type="color"
+                id="color"
+                class="control color"
+                value="#2b61ff"
+              />
+            </div>
+            <div>
+              <label for="thumb">Thumbnail URL</label>
+              <input id="thumb" class="control" placeholder="https://..." />
+            </div>
+            <div>
+              <label for="image">Image URL</label>
+              <input id="image" class="control" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <div class="label-row">
+                <label for="authorName">Author name</label>
+                <span id="cntAuthorName" class="counter"></span>
+              </div>
+              <input id="authorName" class="control" maxlength="256" />
+            </div>
+            <div>
+              <label for="authorIcon">Author icon URL</label>
+              <input
+                id="authorIcon"
+                class="control"
+                placeholder="https://..."
+              />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="authorUrl">Author URL</label>
+              <input id="authorUrl" class="control" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <div class="label-row">
+                <label for="footerText">Footer text</label>
+                <span id="cntFooterText" class="counter"></span>
+              </div>
+              <input id="footerText" class="control" maxlength="2048" />
+            </div>
+            <div>
+              <label for="footerIcon">Footer icon URL</label>
+              <input
+                id="footerIcon"
+                class="control"
+                placeholder="https://..."
+              />
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h2>Fields</h2>
+          <div id="fields" class="fields"></div>
+          <div class="inline">
+            <button id="addField" class="btn secondary" type="button">
+              + Add field
+            </button>
+            <span class="muted">Up to 25 fields</span>
+          </div>
+
+          <div class="divider"></div>
+
+          <h2>Buttons</h2>
+          <div id="buttons" class="buttons-list"></div>
+          <div class="inline">
+            <button id="addButton" class="btn secondary" type="button">
+              + Add button
+            </button>
+            <span class="muted">Up to 5 buttons (max 25)</span>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="total-counter">
+            <span class="muted">Total text:</span>
+            <span id="cntTotal" class="counter"></span>
+          </div>
+
+          <div class="actions">
+            <button id="clear" class="btn warn" type="button">Clear</button>
+            <button id="send" class="btn" type="button">Send</button>
+          </div>
+        </section>
+
+        <aside class="card">
+          <h2>Preview</h2>
+          <div id="preview" class="preview">
+            <div class="muted">Start typing to see a preview...</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="alert-container" class="alert-container"></div>
+    <script src="alerts/notification.js"></script>
+    <script src="scripts/embedbuilder.js"></script>
+  </body>
+</html>

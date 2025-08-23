@@ -63,4 +63,7 @@ contextBridge.exposeInMainWorld("api", {
       window.removeEventListener("offline", offFn);
     };
   },
+
+  getEmbedTargets: () => invoke("embed:list"),
+  sendEmbed: (payload) => invoke("embed:send", payload),
 });

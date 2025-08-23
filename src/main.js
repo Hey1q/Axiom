@@ -5,6 +5,7 @@ const {
   shell,
   Menu,
   MenuItem,
+  globalShortcut,
 } = require("electron");
 const path = require("node:path");
 const fs = require("fs");
@@ -54,6 +55,7 @@ function resolvePageSafe(page) {
     "dashboard.html",
     "setup.html",
     "termsofservices.html",
+    "embedbuilder.html",
     "donates.html",
     "about.html",
   ]);
@@ -82,7 +84,6 @@ async function createWindow() {
     },
   });
 
-  //  mainWindow.webContents.openDevTools({ mode: "detach" });
   mainWindow.maximize();
 
   const initialPage = getInitialPage();
@@ -109,7 +110,55 @@ async function createWindow() {
   });
 }
 
-Menu.setApplicationMenu(null);
+function buildAppMenu() {
+  const template = [
+    {
+      label: "View",
+      submenu: [
+        {
+          label: "Toggle DevTools",
+          accelerator: "F12",
+          click: () => {
+            const w = BrowserWindow.getFocusedWindow() || mainWindow;
+            if (!w) return;
+            const wc = w.webContents;
+            if (wc.isDevToolsOpened()) wc.closeDevTools();
+            else wc.openDevTools({ mode: "detach" });
+          },
+        },
+        { type: "separator" },
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
+function registerDevtoolsShortcuts() {
+  globalShortcut.register("CommandOrControl+Shift+I", () => {
+    const w = BrowserWindow.getFocusedWindow() || mainWindow;
+    if (!w) return;
+    const wc = w.webContents;
+    if (wc.isDevToolsOpened()) wc.closeDevTools();
+    else wc.openDevTools({ mode: "detach" });
+  });
+}
 
 ipcMain.on("bot-start", () => bot.start());
 ipcMain.on("bot-stop", () => bot.stop());
@@ -208,6 +257,42 @@ ipcMain.handle("start-discord-oauth", () => {
   }
 });
 
+ipcMain.handle("embed:list", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) throw new Error("GUILD_ID missing in owner-config.json.");
+    const channels = await bot.listTextChannels(guildId);
+    return { ok: true, channels };
+  } catch (err) {
+    console.error("embed:list error:", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+});
+
+ipcMain.handle("embed:send", async (_e, payload) => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) throw new Error("GUILD_ID missing in owner-config.json.");
+
+    const res = await bot.sendEmbed({
+      guildId,
+      channelId: payload.channelId,
+      messageContent: payload.messageContent || "",
+      embed: payload.embed || {},
+      buttons: payload.buttons || [],
+      mention: payload.mention || null,
+      suppressEmbeds: !!payload.suppressEmbeds,
+    });
+
+    return { ok: true, messageId: res?.id || null, jumpLink: res?.url || null };
+  } catch (err) {
+    console.error("embed:send error:", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+});
+
 app.setAsDefaultProtocolClient("axiom");
 
 app.on("browser-window-created", (event, win) => {
@@ -235,11 +320,18 @@ app.on("open-url", (event, url) => {
   }
 });
 
-app.whenReady().then(() => {
-  createWindow();
+app.whenReady().then(async () => {
+  await createWindow();
+  buildAppMenu();
+  registerDevtoolsShortcuts();
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on("window-all-closed", () => {

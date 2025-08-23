@@ -1,13 +1,12 @@
 generator client {
   provider      = "prisma-client-js"
   engineType    = "binary"
-  // βοηθάει στα builds σε Windows
   binaryTargets = ["windows", "native"]
 }
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://user:pass@localhost:5432/db"
+  url      = "postgresql://user:pass@localhost:5432/db" 
 }
 
 model User {

@@ -42,9 +42,7 @@ function checkCooldown(interaction, command) {
   const last = perUser.get(interaction.user.id) || 0;
   const diff = now - last;
 
-  if (diff < cd) {
-    return cd - diff;
-  }
+  if (diff < cd) return cd - diff;
 
   perUser.set(interaction.user.id, now);
   return null;
@@ -59,6 +57,32 @@ module.exports = {
    */
   async execute(interaction) {
     if (!interaction.inGuild()) return;
+
+    if (interaction.isButton()) {
+      try {
+        // Demo
+        const map = {
+          "test:primary": "Primary",
+          "test:secondary": "Secondary",
+          "test:success": "Success",
+          "test:danger": "Danger",
+        };
+
+        const name = map[interaction.customId];
+
+        if (name) {
+          await safeReply(interaction, `✅ You pressed **${name}**`);
+        } else {
+          await interaction.deferUpdate().catch(() => {});
+        }
+      } catch (err) {
+        console.error("🟥 button handler error:", err);
+        try {
+          await interaction.deferUpdate();
+        } catch {}
+      }
+      return;
+    }
 
     if (interaction.isAutocomplete()) {
       const cmd = interaction.client.commands.get(interaction.commandName);

@@ -9,7 +9,14 @@ const {
   Routes,
   ActivityType,
   Events,
+  ChannelType,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  PermissionFlagsBits,
 } = require("discord.js");
+
 const { loadConfig } = require("./functions/setupHandler");
 const cfgPrime = loadConfig() || {};
 if (cfgPrime.DATABASE_URL) process.env.DATABASE_URL = cfgPrime.DATABASE_URL;
@@ -41,7 +48,6 @@ class Bot extends EventEmitter {
     });
 
     this.client.commands = new Collection();
-
     this._wireClientEvents(this.client);
   }
 
@@ -131,10 +137,10 @@ class Bot extends EventEmitter {
 
     const cfg = loadConfig() || {};
     const token = (cfg.DISCORD_BOT_TOKEN || "").trim();
-    const appId = (cfg.DISCORD_CLIENT_ID || "").trim();
+    theAppId = (cfg.DISCORD_CLIENT_ID || "").trim();
     const guildId = (cfg.GUILD_ID || "").trim();
 
-    if (!token || !appId) {
+    if (!token || !theAppId) {
       this.log(
         "⚠️ Missing DISCORD_CLIENT_ID and/or DISCORD_BOT_TOKEN for deploy."
       );
@@ -148,7 +154,7 @@ class Bot extends EventEmitter {
         this.log(
           `📡 Deploying ${this.commandsToRegister.length} guild commands to ${guildId}...`
         );
-        await rest.put(Routes.applicationGuildCommands(appId, guildId), {
+        await rest.put(Routes.applicationGuildCommands(theAppId, guildId), {
           body: this.commandsToRegister,
         });
         this.log("✅ Guild commands deployed (instant).");
@@ -156,7 +162,7 @@ class Bot extends EventEmitter {
         this.log(
           `📡 Deploying ${this.commandsToRegister.length} GLOBAL commands (propagation may take up to 1 hour)...`
         );
-        await rest.put(Routes.applicationCommands(appId), {
+        await rest.put(Routes.applicationCommands(theAppId), {
           body: this.commandsToRegister,
         });
         this.log("✅ Global commands submitted.");
@@ -209,8 +215,8 @@ class Bot extends EventEmitter {
         );
       } else if (/Disallowed.*intent/i.test(msg)) {
         this.log(
-          "❌ Disallowed Intents. Enable required Privileged Gateway Intents in Discord Developer Portal → Bot, " +
-            "ή αφαίρεσε MessageContent/GuildMessages από τα intents."
+          "❌ Disallowed Intents. Enable required Privileged Gateway Intents in the Discord Developer Portal → Bot, " +
+            "or remove MessageContent/GuildMessages from the intents."
         );
       } else {
         this.log(`❌ Login error: ${msg}`);
@@ -235,6 +241,213 @@ class Bot extends EventEmitter {
       this.log(`❌ Stop error: ${e.message}`);
       this.emit("statusChange", "Offline");
     }
+  }
+
+  _getEmbedFromPayload(embed) {
+    const eb = new EmbedBuilder();
+
+    if (embed.title) eb.setTitle(String(embed.title).slice(0, 256));
+    if (embed.description)
+      eb.setDescription(String(embed.description).slice(0, 4096));
+    if (embed.url) eb.setURL(String(embed.url));
+    if (embed.color) {
+      const clr =
+        typeof embed.color === "string"
+          ? embed.color.replace("#", "")
+          : embed.color;
+      try {
+        eb.setColor(Number.isInteger(clr) ? clr : parseInt(clr, 16));
+      } catch {}
+    }
+    if (embed.thumbnail) eb.setThumbnail(String(embed.thumbnail));
+    if (embed.image) eb.setImage(String(embed.image));
+
+    if (
+      embed.author &&
+      (embed.author.name || embed.author.icon_url || embed.author.url)
+    ) {
+      eb.setAuthor({
+        name: (embed.author.name || "").toString().slice(0, 256),
+        iconURL: embed.author.icon_url || null,
+        url: embed.author.url || null,
+      });
+    }
+
+    if (embed.footer && (embed.footer.text || embed.footer.icon_url)) {
+      eb.setFooter({
+        text: (embed.footer.text || "").toString().slice(0, 2048),
+        iconURL: embed.footer.icon_url || null,
+      });
+    }
+
+    if (embed.addTimestamp) eb.setTimestamp(new Date());
+
+    if (Array.isArray(embed.fields)) {
+      const fields = embed.fields
+        .filter((f) => f && (f.name || f.value))
+        .slice(0, 25)
+        .map((f) => ({
+          name: String(f.name || "\u200b").slice(0, 256),
+          value: String(f.value || "\u200b").slice(0, 1024),
+          inline: !!f.inline,
+        }));
+      if (fields.length) eb.addFields(fields);
+    }
+
+    return eb;
+  }
+
+  _buildComponents(buttons) {
+    if (!Array.isArray(buttons) || !buttons.length) return [];
+    const rows = [];
+    let current = new ActionRowBuilder();
+
+    for (const btn of buttons.slice(0, 25)) {
+      const styleKey = String(btn.style || "Primary").toLowerCase();
+      const style =
+        styleKey === "primary"
+          ? ButtonStyle.Primary
+          : styleKey === "secondary"
+          ? ButtonStyle.Secondary
+          : styleKey === "success"
+          ? ButtonStyle.Success
+          : styleKey === "danger"
+          ? ButtonStyle.Danger
+          : ButtonStyle.Link;
+
+      const builder = new ButtonBuilder()
+        .setLabel(String(btn.label || "Button").slice(0, 80))
+        .setStyle(style);
+
+      if (style === ButtonStyle.Link) {
+        if (btn.url) builder.setURL(String(btn.url));
+        else continue;
+      } else {
+        builder.setCustomId(
+          String(
+            btn.custom_id || `btn_${Math.random().toString(36).slice(2, 8)}`
+          )
+        );
+        if (btn.emoji) builder.setEmoji(btn.emoji);
+        builder.setDisabled(!!btn.disabled);
+      }
+
+      current.addComponents(builder);
+
+      if (current.components.length === 5) {
+        rows.push(current);
+        current = new ActionRowBuilder();
+      }
+    }
+
+    if (current.components.length) rows.push(current);
+    return rows.slice(0, 5);
+  }
+
+  async _resolveChannel(guild, channelId) {
+    if (!guild) return null;
+    try {
+      const ch = await guild.channels.fetch(channelId);
+      if (!ch) return null;
+      if (
+        ch.type === ChannelType.GuildText ||
+        ch.type === ChannelType.GuildAnnouncement
+      ) {
+        return ch;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async listTextChannels(guildId) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+    const all = await guild.channels.fetch();
+
+    const result = [];
+    for (const [, ch] of all) {
+      if (!ch) continue;
+      if (
+        ch.type === ChannelType.GuildText ||
+        ch.type === ChannelType.GuildAnnouncement
+      ) {
+        result.push({
+          id: ch.id,
+          name: `#${ch.name}`,
+          type:
+            ch.type === ChannelType.GuildAnnouncement ? "announcement" : "text",
+        });
+      }
+    }
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    return result;
+  }
+
+  /**
+   * @param {object} params
+   * @param {string} params.guildId
+   * @param {string} params.channelId
+   * @param {string} params.messageContent
+   * @param {object} params.embed
+   * @param {Array} params.buttons
+   * @param {string|null} params.mention
+   * @param {boolean} params.suppressEmbeds
+   */
+  async sendEmbed(params) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const {
+      guildId,
+      channelId,
+      messageContent,
+      embed,
+      buttons,
+      mention,
+      suppressEmbeds,
+    } = params || {};
+    if (!guildId || !channelId) throw new Error("guildId/channelId missing.");
+
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+
+    try {
+      const me = await guild.members.fetchMe();
+      const perms = me.permissions;
+      if (!perms.has(PermissionFlagsBits.SendMessages)) {
+        this.log("⚠️ Missing permission: SendMessages.");
+      }
+    } catch {}
+
+    const channel = await this._resolveChannel(guild, channelId);
+    if (!channel)
+      throw new Error("Channel not found or not text/announcement.");
+
+    const eb = this._getEmbedFromPayload(embed || {});
+    const components = this._buildComponents(buttons || []);
+
+    let content = messageContent ? String(messageContent) : "";
+    if (mention) {
+      if (mention === "everyone") content = `@everyone ${content}`;
+      else if (mention === "here") content = `@here ${content}`;
+      else if (/^\d{16,20}$/.test(String(mention)))
+        content = `<@&${mention}> ${content}`;
+    }
+
+    const msg = await channel.send({
+      content: content || undefined,
+      embeds: [eb],
+      components: components.length ? components : undefined,
+      flags: suppressEmbeds ? 1 << 2 : undefined,
+    });
+
+    this.log(
+      `📨 Embed sent to #${channel.name} (${channel.id}) -> message ${msg.id}`
+    );
+    return msg;
   }
 }
 

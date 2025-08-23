@@ -204,7 +204,7 @@ async function saveOwnerConfig(
   );
   logWrap(
     log,
-    "✅ Config saved. Prisma client πρέπει να έχει παραχθεί στο build (electron-builder)."
+    "✅ Config saved. The Prisma client must be generated during the build (electron-builder)."
   );
   return true;
 }
