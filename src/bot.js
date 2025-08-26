@@ -18,6 +18,7 @@ const {
 } = require("discord.js");
 
 const { loadConfig } = require("./functions/setupHandler");
+const { registerVerifyButtons } = require("./handlers/verifyButtons");
 const cfgPrime = loadConfig() || {};
 if (cfgPrime.DATABASE_URL) process.env.DATABASE_URL = cfgPrime.DATABASE_URL;
 
@@ -46,7 +47,6 @@ class Bot extends EventEmitter {
         GatewayIntentBits.MessageContent,
       ],
     });
-
     this.client.commands = new Collection();
     this._wireClientEvents(this.client);
   }
@@ -63,11 +63,12 @@ class Bot extends EventEmitter {
         });
       } catch {}
     });
-
     client.on(Events.Error, (e) =>
       this.log(`🟥 Client error: ${e?.message || e}`)
     );
     client.on(Events.Warn, (w) => this.log(`⚠️ ${w}`));
+
+    registerVerifyButtons(client, { loadConfig, log: (m) => this.log(m) });
   }
 
   _loadCommand(absPath) {
@@ -91,7 +92,6 @@ class Bot extends EventEmitter {
       return;
     }
     const entries = fs.readdirSync(commandsPath, { withFileTypes: true });
-
     for (const entry of entries) {
       const base = path.join(commandsPath, entry.name);
       if (entry.isDirectory()) {
@@ -109,19 +109,13 @@ class Bot extends EventEmitter {
       this.log(`⚠️ Events folder not found: ${eventsPath}`);
       return;
     }
-
     const files = fs.readdirSync(eventsPath).filter((f) => f.endsWith(".js"));
-
     for (const file of files) {
       try {
         const event = require(path.join(eventsPath, file));
-        if (event.once) {
-          this.client.once(event.name, (...args) =>
-            event.execute(...args, this)
-          );
-        } else {
-          this.client.on(event.name, (...args) => event.execute(...args, this));
-        }
+        if (event.once)
+          this.client.once(event.name, (...a) => event.execute(...a, this));
+        else this.client.on(event.name, (...a) => event.execute(...a, this));
         this.log(`📦 Event: ${event.name}`);
       } catch (e) {
         this.log(`❌ Failed to load event ${file}: ${e.message}`);
@@ -134,21 +128,17 @@ class Bot extends EventEmitter {
       this.log("ℹ️ No commands to register.");
       return;
     }
-
     const cfg = loadConfig() || {};
     const token = (cfg.DISCORD_BOT_TOKEN || "").trim();
-    theAppId = (cfg.DISCORD_CLIENT_ID || "").trim();
+    const theAppId = (cfg.DISCORD_CLIENT_ID || "").trim();
     const guildId = (cfg.GUILD_ID || "").trim();
-
     if (!token || !theAppId) {
       this.log(
         "⚠️ Missing DISCORD_CLIENT_ID and/or DISCORD_BOT_TOKEN for deploy."
       );
       return;
     }
-
     const rest = new REST().setToken(token);
-
     try {
       if (guildId) {
         this.log(
@@ -160,7 +150,7 @@ class Bot extends EventEmitter {
         this.log("✅ Guild commands deployed (instant).");
       } else {
         this.log(
-          `📡 Deploying ${this.commandsToRegister.length} GLOBAL commands (propagation may take up to 1 hour)...`
+          `📡 Deploying ${this.commandsToRegister.length} GLOBAL commands...`
         );
         await rest.put(Routes.applicationCommands(theAppId), {
           body: this.commandsToRegister,
@@ -177,10 +167,8 @@ class Bot extends EventEmitter {
       this.log("ℹ️ Bot is already starting or online.");
       return;
     }
-
     const cfg = loadConfig() || {};
     const token = (cfg.DISCORD_BOT_TOKEN || "").trim();
-
     if (!token) {
       this.log("❌ DISCORD_BOT_TOKEN missing in owner-config.json.");
       this.emit("statusChange", "Offline");
@@ -194,14 +182,12 @@ class Bot extends EventEmitter {
       this.client = null;
     }
     this._createClient();
-
     this.handleCommands();
     this.handleEvents();
 
     this.loggingIn = true;
     this.emit("statusChange", "Connecting");
     this.log("🚀 Starting bot...");
-
     try {
       await this.client.login(token);
       await this.registerCommands();
@@ -215,8 +201,8 @@ class Bot extends EventEmitter {
         );
       } else if (/Disallowed.*intent/i.test(msg)) {
         this.log(
-          "❌ Disallowed Intents. Enable required Privileged Gateway Intents in the Discord Developer Portal → Bot, " +
-            "or remove MessageContent/GuildMessages from the intents."
+          "❌ Disallowed Intents. Enable Privileged Gateway Intents in Developer Portal → Bot," +
+            " or remove MessageContent/GuildMessages from intents."
         );
       } else {
         this.log(`❌ Login error: ${msg}`);
@@ -230,9 +216,7 @@ class Bot extends EventEmitter {
   stop() {
     this.log("🛑 Stopping bot...");
     try {
-      if (this.client) {
-        this.client.destroy();
-      }
+      if (this.client) this.client.destroy();
       this.client = null;
       this.online = false;
       this.emit("statusChange", "Offline");
@@ -245,7 +229,6 @@ class Bot extends EventEmitter {
 
   _getEmbedFromPayload(embed) {
     const eb = new EmbedBuilder();
-
     if (embed.title) eb.setTitle(String(embed.title).slice(0, 256));
     if (embed.description)
       eb.setDescription(String(embed.description).slice(0, 4096));
@@ -272,14 +255,12 @@ class Bot extends EventEmitter {
         url: embed.author.url || null,
       });
     }
-
     if (embed.footer && (embed.footer.text || embed.footer.icon_url)) {
       eb.setFooter({
         text: (embed.footer.text || "").toString().slice(0, 2048),
         iconURL: embed.footer.icon_url || null,
       });
     }
-
     if (embed.addTimestamp) eb.setTimestamp(new Date());
 
     if (Array.isArray(embed.fields)) {
@@ -293,7 +274,6 @@ class Bot extends EventEmitter {
         }));
       if (fields.length) eb.addFields(fields);
     }
-
     return eb;
   }
 
@@ -301,7 +281,6 @@ class Bot extends EventEmitter {
     if (!Array.isArray(buttons) || !buttons.length) return [];
     const rows = [];
     let current = new ActionRowBuilder();
-
     for (const btn of buttons.slice(0, 25)) {
       const styleKey = String(btn.style || "Primary").toLowerCase();
       const style =
@@ -325,7 +304,9 @@ class Bot extends EventEmitter {
       } else {
         builder.setCustomId(
           String(
-            btn.custom_id || `btn_${Math.random().toString(36).slice(2, 8)}`
+            btn.custom_id ||
+              btn.customId ||
+              `btn_${Math.random().toString(36).slice(2, 8)}`
           )
         );
         if (btn.emoji) builder.setEmoji(btn.emoji);
@@ -333,13 +314,11 @@ class Bot extends EventEmitter {
       }
 
       current.addComponents(builder);
-
       if (current.components.length === 5) {
         rows.push(current);
         current = new ActionRowBuilder();
       }
     }
-
     if (current.components.length) rows.push(current);
     return rows.slice(0, 5);
   }
@@ -367,7 +346,6 @@ class Bot extends EventEmitter {
     const guild = await this.client.guilds.fetch(guildId);
     if (!guild) throw new Error("Guild not found.");
     const all = await guild.channels.fetch();
-
     const result = [];
     for (const [, ch] of all) {
       if (!ch) continue;
@@ -387,16 +365,221 @@ class Bot extends EventEmitter {
     return result;
   }
 
-  /**
-   * @param {object} params
-   * @param {string} params.guildId
-   * @param {string} params.channelId
-   * @param {string} params.messageContent
-   * @param {object} params.embed
-   * @param {Array} params.buttons
-   * @param {string|null} params.mention
-   * @param {boolean} params.suppressEmbeds
-   */
+  async listRoles(guildId) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+
+    const roles = await guild.roles.fetch();
+    const arr = [];
+    for (const [, role] of roles) {
+      if (!role || role.name === "@everyone") continue;
+      arr.push({
+        id: role.id,
+        name: role.name,
+        position: role.position,
+        managed: role.managed,
+      });
+    }
+    arr.sort((a, b) => b.position - a.position);
+    return arr;
+  }
+
+  async deleteMessage({ guildId, channelId, messageId }) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+    const channel = await this._resolveChannel(guild, channelId);
+    if (!channel) throw new Error("Channel not found.");
+    const msg = await channel.messages.fetch(messageId).catch(() => null);
+    if (!msg) return false;
+    await msg.delete().catch(() => {});
+    this.log(`🗑️ Deleted message ${messageId} in #${channel.name}`);
+    return true;
+  }
+
+  async deleteByFooterIncludes({
+    guildId,
+    channelId,
+    includes,
+    limit = 50,
+    maxScan,
+    batchSize = 100,
+  }) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    if (!includes || typeof includes !== "string") return 0;
+
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+
+    const channel = await this._resolveChannel(guild, channelId);
+    if (!channel)
+      throw new Error("Channel not found or not text/announcement.");
+
+    const totalToScan = Math.max(
+      1,
+      Number.isInteger(maxScan)
+        ? maxScan
+        : Number.isInteger(limit)
+        ? limit
+        : 100
+    );
+    const pageSize = Math.min(100, Math.max(1, batchSize));
+
+    let deleted = 0;
+    let scanned = 0;
+    let before;
+
+    while (scanned < totalToScan) {
+      const fetchLimit = Math.min(pageSize, totalToScan - scanned);
+      const batch = await channel.messages
+        .fetch(before ? { limit: fetchLimit, before } : { limit: fetchLimit })
+        .catch(() => null);
+
+      if (!batch || !batch.size) break;
+
+      for (const m of batch.values()) {
+        scanned++;
+        if (m?.author?.id !== this.client.user.id) continue;
+
+        const hasMarker =
+          Array.isArray(m.embeds) &&
+          m.embeds.some((e) => {
+            const t =
+              (e && e.footer && e.footer.text) ||
+              (e && e.data && e.data.footer && e.data.footer.text) ||
+              "";
+            return typeof t === "string" && t.includes(includes);
+          });
+
+        if (hasMarker) {
+          await m.delete().catch(() => {});
+          deleted++;
+        }
+      }
+
+      const oldest = batch.last();
+      if (!oldest) break;
+      before = oldest.id;
+
+      if (batch.size < fetchLimit) break;
+    }
+
+    this.log(
+      `🗑️ Scanned ${scanned} msgs, deleted ${deleted} by marker "${includes}" in #${channel.name}`
+    );
+    return deleted;
+  }
+
+  async deleteRecentVerifyGates({ guildId, channelId, scanLimit = 50 }) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    const channel = await this._resolveChannel(guild, channelId);
+    if (!channel) return 0;
+
+    let deleted = 0,
+      before;
+    while (deleted < 50) {
+      const batch = await channel.messages
+        .fetch(before ? { limit: 100, before } : { limit: 100 })
+        .catch(() => null);
+      if (!batch || !batch.size) break;
+
+      for (const m of batch.values()) {
+        if (m.author?.id !== this.client.user.id) continue;
+        const hasAccept = m.components?.some((r) =>
+          r.components?.some((c) => c.customId === "verify_accept")
+        );
+        const hasDecline = m.components?.some((r) =>
+          r.components?.some((c) => c.customId === "verify_decline")
+        );
+        if (hasAccept && hasDecline) {
+          await m.delete().catch(() => {});
+          deleted++;
+        }
+        if (deleted >= scanLimit) break;
+      }
+      const oldest = batch.last();
+      if (!oldest) break;
+      before = oldest.id;
+    }
+    this.log(
+      `🗑️ Deleted ${deleted} verify gate message(s) in #${channel?.name}`
+    );
+    return deleted;
+  }
+
+  async deleteRecentBotEmbeds({ guildId, channelId, max = 1, scanLimit = 50 }) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    const channel = await this._resolveChannel(guild, channelId);
+    if (!channel) return 0;
+
+    let deleted = 0,
+      before;
+    while (deleted < max) {
+      const batch = await channel.messages
+        .fetch(before ? { limit: 100, before } : { limit: 100 })
+        .catch(() => null);
+      if (!batch || !batch.size) break;
+
+      for (const m of batch.values()) {
+        if (m.author?.id !== this.client.user.id) continue;
+        if (!m.embeds?.length) continue;
+        if (m.components?.length) continue;
+
+        await m.delete().catch(() => {});
+        deleted++;
+        if (deleted >= max) break;
+      }
+      const oldest = batch.last();
+      if (!oldest) break;
+      before = oldest.id;
+    }
+    this.log(`🗑️ Deleted ${deleted} bot embed(s) in #${channel?.name}`);
+    return deleted;
+  }
+
+  async deleteVerifyGatesInGuild({ guildId, perChannelScan = 50 }) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    const all = await guild.channels.fetch();
+    let total = 0;
+    for (const [, ch] of all) {
+      if (!ch) continue;
+      if (ch.type !== 0 && ch.type !== 5) continue;
+      total += await this.deleteRecentVerifyGates({
+        guildId,
+        channelId: ch.id,
+        scanLimit: perChannelScan,
+      }).catch(() => 0);
+    }
+    this.log(`🗑️ Deleted total ${total} verify gates across guild`);
+    return total;
+  }
+
+  async getChannelName(guildId, channelId) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+    const ch = await guild.channels.fetch(channelId).catch(() => null);
+    if (!ch) return null;
+    if (
+      ch.type === ChannelType.GuildText ||
+      ch.type === ChannelType.GuildAnnouncement
+    ) {
+      return `#${ch.name}`;
+    }
+    return null;
+  }
+
   async sendEmbed(params) {
     if (!this.client || !this.client.isReady())
       throw new Error("Bot is offline.");
@@ -416,8 +599,7 @@ class Bot extends EventEmitter {
 
     try {
       const me = await guild.members.fetchMe();
-      const perms = me.permissions;
-      if (!perms.has(PermissionFlagsBits.SendMessages)) {
+      if (!me.permissions.has(PermissionFlagsBits.SendMessages)) {
         this.log("⚠️ Missing permission: SendMessages.");
       }
     } catch {}
@@ -433,7 +615,7 @@ class Bot extends EventEmitter {
     if (mention) {
       if (mention === "everyone") content = `@everyone ${content}`;
       else if (mention === "here") content = `@here ${content}`;
-      else if (/^\d{16,20}$/.test(String(mention)))
+      else if (/^\d{17,20}$/.test(String(mention)))
         content = `<@&${mention}> ${content}`;
     }
 

@@ -29,7 +29,6 @@ async function getPrismaClient() {
     return null;
   }
 
-  // Αν δεν υπάρχει .prisma/client, κάνε generate
   const clientPath = path.resolve(
     __dirname,
     "../../node_modules/.prisma/client"
@@ -54,38 +53,3 @@ async function getPrismaClient() {
 }
 
 module.exports = { getPrismaClient };
-
-/*const { PrismaClient } = require("@prisma/client");
-const fs = require("fs");
-const path = require("path");
-
-const configPath = path.resolve(__dirname, "../../config/owner-config.json");
-
-if (!fs.existsSync(configPath)) {
-  throw new Error("❌ Config file not found: config/owner-config.json");
-}
-
-const configRaw = fs.readFileSync(configPath, "utf-8");
-let config;
-
-try {
-  config = JSON.parse(configRaw);
-} catch (err) {
-  throw new Error("❌ Failed to parse owner-config.json: " + err.message);
-}
-
-if (!config.DATABASE_URL || typeof config.DATABASE_URL !== "string") {
-  throw new Error("❌ DATABASE_URL is missing or invalid in owner-config.json");
-}
-
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: config.DATABASE_URL,
-    },
-  },
-});
-
-module.exports = prisma;
-
-*/

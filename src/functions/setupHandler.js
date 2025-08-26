@@ -83,12 +83,16 @@ function runCommand(command, args, log, title, options = {}) {
     proc.stderr.on("data", (d) =>
       logWrap(log, ("stderr: " + d).toString().trim())
     );
-    proc.on("close", (code) =>
-      code === 0
-        ? (logWrap(log, `✅ ${title} completed.`), resolve())
-        : (logWrap(log, `❌ ${title} failed with exit code ${code}`),
-          reject(new Error(`${title} failed with exit code ${code}`)))
-    );
+    proc.on("close", (code) => {
+      if (code === 0) {
+        logWrap(log, `✅ ${title} completed.`);
+        resolve();
+      } else {
+        const err = new Error(`${title} failed with exit code ${code}`);
+        logWrap(log, `❌ ${title} failed with exit code ${code}`);
+        reject(err);
+      }
+    });
     proc.on("error", (err) => {
       logWrap(log, `❌ ${title} crashed: ${err.message}`);
       reject(err);
@@ -109,35 +113,58 @@ function isValidConfig(c) {
   );
 }
 
-async function saveOwnerConfig(
-  {
-    DISCORD_CLIENT_ID,
-    DISCORD_CLIENT_SECRET,
-    DISCORD_BOT_TOKEN,
-    DISCORD_REDIRECT_URI,
-    OWNER_DISCORD_ID,
-    GUILD_ID,
-    DATABASE_URL,
-    GUILD_INVITE_URL,
-  },
-  log = console.log
-) {
-  const cleanedUrl = sanitizeDatabaseUrl(DATABASE_URL);
+const RUNTIME_KEYS = new Set([
+  "VERIFY_MESSAGE_ID",
+  "VERIFY_CREATED_AT",
+  "VERIFY_UPDATED_AT",
+  "LAST_JOIN_CHANNEL_ID",
+  "LAST_JOIN_MESSAGE_ID",
+  "LAST_LEAVE_CHANNEL_ID",
+  "LAST_LEAVE_MESSAGE_ID",
+]);
 
-  const config = {
-    DISCORD_CLIENT_ID,
-    DISCORD_CLIENT_SECRET,
-    DISCORD_BOT_TOKEN,
-    DISCORD_REDIRECT_URI,
-    OWNER_DISCORD_ID,
-    GUILD_ID,
+function stripRuntimeKeys(obj) {
+  if (!obj || typeof obj !== "object") return 0;
+  let removed = 0;
+  for (const k of Object.keys(obj)) {
+    if (RUNTIME_KEYS.has(k)) {
+      delete obj[k];
+      removed++;
+    }
+  }
+  return removed;
+}
+
+function pruneByMask(merged, incoming) {
+  if (!incoming || typeof incoming !== "object") return;
+  for (const k of Object.keys(incoming)) {
+    if (incoming[k] === null || typeof incoming[k] === "undefined") {
+      delete merged[k];
+    }
+  }
+}
+
+async function saveOwnerConfig(incoming = {}, log = console.log) {
+  const existing = configExists() ? loadConfig() || {} : {};
+
+  stripRuntimeKeys(incoming);
+  stripRuntimeKeys(existing);
+
+  const cleanedUrl = sanitizeDatabaseUrl(
+    incoming.DATABASE_URL ?? existing.DATABASE_URL ?? ""
+  );
+
+  const merged = {
+    ...existing,
+    ...incoming,
     DATABASE_URL: cleanedUrl,
-    GUILD_INVITE_URL,
   };
+
+  pruneByMask(merged, incoming);
 
   try {
     fs.mkdirSync(configDir, { recursive: true });
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+    fs.writeFileSync(configPath, JSON.stringify(merged, null, 2), "utf-8");
     logWrap(log, `💾 Config file saved at: ${configPath}`);
   } catch (err) {
     logWrap(log, "❌ Failed to write config file: " + err.message);
@@ -212,6 +239,7 @@ async function saveOwnerConfig(
 function configExists() {
   return fs.existsSync(configPath);
 }
+
 function loadConfig() {
   if (!configExists()) return null;
   try {

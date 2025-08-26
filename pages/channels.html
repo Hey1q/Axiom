@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Axiom • Server Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles/global.css" />
+    <link rel="stylesheet" href="styles/channels.css" />
+    <style>
+      .input-error {
+        outline: 2px solid #ff4d4f;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .small {
+        font-size: 0.9rem;
+      }
+      .tight {
+        margin-bottom: 0.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <button class="back-btn" id="btn-back">← Back to Dashboard</button>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h1 class="card-title">Welcome & Leave Channels</h1>
+        <p class="muted">
+          Only the channel IDs are stored in your owner-config. Nothing else.
+        </p>
+
+        <div class="row row-action">
+          <label for="joinInput">Welcome (Join) Channel ID</label>
+          <input id="joinInput" class="mono" placeholder="123456789012345678" />
+          <button id="btn-save-join" class="btn primary inline-btn">
+            Save
+          </button>
+        </div>
+
+        <div class="row row-action">
+          <label for="leaveInput">Leave Channel ID</label>
+          <input
+            id="leaveInput"
+            class="mono"
+            placeholder="223456789012345678"
+          />
+          <button id="btn-save-leave" class="btn primary inline-btn">
+            Save
+          </button>
+        </div>
+
+        <div class="status" id="statusIds" aria-live="polite"></div>
+      </section>
+
+      <section class="card panel-2025">
+        <div class="panel-header">
+          <div class="panel-titles">
+            <h2 class="card-title tight">Verification Role</h2>
+            <p class="muted small">
+              Select the role users receive when they press <b>Accept</b>. Make
+              sure the bot’s highest role is <b>above</b> this role and the bot
+              has <b>Manage Roles</b> + <b>Kick Members</b>.
+            </p>
+          </div>
+          <div class="header-actions">
+            <button
+              id="btn-refresh-roles"
+              class="btn btn-ghost btn-ghost-sm icon-left"
+              title="Refresh roles"
+            >
+              <span class="icon">⟳</span> Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="roleSelect" class="field-label">Role</label>
+          <div class="select-wrap">
+            <select id="roleSelect" class="select-2025" disabled>
+              <option>Loading…</option>
+            </select>
+            <button
+              id="btn-save-role"
+              class="btn btn-solid icon-left"
+              title="Save verification role"
+              disabled
+            >
+              <span class="icon">✔</span> Save
+            </button>
+          </div>
+          <div class="hint">
+            Tip: Managed roles can’t be granted by the bot. If you see
+            <code>[managed]</code>, pick another one.
+          </div>
+        </div>
+
+        <div class="status" id="statusRole" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Welcome Embed</h2>
+        <div class="row">
+          <label for="wTitle">Title</label>
+          <input id="wTitle" placeholder="Welcome to the server!" />
+        </div>
+        <div class="row">
+          <label for="wDesc">Description</label>
+          <textarea
+            id="wDesc"
+            placeholder="Glad to have you here. Please read the rules."
+          ></textarea>
+        </div>
+        <div class="row">
+          <label for="wImg">Image URL (optional)</label>
+          <input id="wImg" placeholder="https://..." />
+        </div>
+        <div class="status" id="statusW" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Leave Embed</h2>
+        <div class="row">
+          <label for="lTitle">Title</label>
+          <input id="lTitle" placeholder="Goodbye!" />
+        </div>
+        <div class="row">
+          <label for="lDesc">Description</label>
+          <textarea
+            id="lDesc"
+            placeholder="We hope to see you again."
+          ></textarea>
+        </div>
+        <div class="row">
+          <label for="lImg">Image URL (optional)</label>
+          <input id="lImg" placeholder="https://..." />
+        </div>
+        <div class="status" id="statusL" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Verification Gate (config)</h2>
+        <p class="muted small">
+          Configure the verification embed.
+          <b
+            >Publishing/Removing is controlled only by the Master Control
+            below.</b
+          ><br />
+          <span class="muted"
+            >How to get a Channel ID: enable <b>Developer Mode</b> in Discord →
+            right-click the channel → <b>Copy ID</b>.</span
+          >
+        </p>
+
+        <div class="row">
+          <label for="verifyChannel">Verification Channel ID</label>
+          <input
+            id="verifyChannel"
+            class="mono"
+            placeholder="123456789012345678"
+          />
+        </div>
+        <div class="row">
+          <label for="verifyTitle">Embed title</label>
+          <input id="verifyTitle" placeholder="Welcome" />
+        </div>
+        <div class="row">
+          <label for="verifyDesc">Embed description</label>
+          <textarea
+            id="verifyDesc"
+            placeholder="Pick a role from the menu, then press Accept. If you press Decline, you will be removed."
+          ></textarea>
+        </div>
+        <div class="status" id="statusVerifyCfg" aria-live="polite"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">Master Control</h2>
+        <p class="muted">
+          <b>ON</b>: publish Welcome, Leave and Verification embeds using the
+          saved IDs and settings.<br />
+          <b>OFF</b>: delete all published messages and clear the related
+          entries in owner-config.
+        </p>
+        <div class="actions">
+          <button id="btn-master-on" class="btn primary">ON (Publish)</button>
+          <button id="btn-master-off" class="btn danger">
+            OFF (Remove &amp; Clear)
+          </button>
+        </div>
+        <div class="status" id="statusMaster" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const setTxt = (id, v) => {
+        const el = $(id);
+        if (el) el.textContent = v || "";
+      };
+      const isSnowflake = (v) => /^\d{17,20}$/.test(String(v || "").trim());
+
+      $("btn-back").addEventListener("click", () => {
+        if (window.api?.openWindow) window.api.openWindow("dashboard.html");
+        else window.location.href = "dashboard.html";
+      });
+
+      async function loadIds() {
+        try {
+          const r = await window.api.wlGet();
+          if (r?.ok) {
+            $("joinInput").value = r.data?.joinChannelId || "";
+            $("leaveInput").value = r.data?.leaveChannelId || "";
+            setTxt("statusIds", "");
+          } else {
+            setTxt("statusIds", "❌ Failed to load channel IDs.");
+          }
+        } catch {
+          setTxt("statusIds", "❌ Failed to load channel IDs.");
+        }
+      }
+
+      $("btn-save-join").addEventListener("click", async () => {
+        const v = $("joinInput").value.trim();
+        if (v && !isSnowflake(v)) {
+          $("joinInput").classList.add("input-error");
+          return setTxt(
+            "statusIds",
+            "❌ Welcome Channel ID must be 17–20 digits."
+          );
+        }
+        $("joinInput").classList.remove("input-error");
+        const r = await window.api.wlSetJoinChannel(v);
+        setTxt(
+          "statusIds",
+          r?.ok ? "✅ Welcome channel saved." : "❌ Failed to save Welcome ID."
+        );
+      });
+
+      $("btn-save-leave").addEventListener("click", async () => {
+        const v = $("leaveInput").value.trim();
+        if (v && !isSnowflake(v)) {
+          $("leaveInput").classList.add("input-error");
+          return setTxt(
+            "statusIds",
+            "❌ Leave Channel ID must be 17–20 digits."
+          );
+        }
+        $("leaveInput").classList.remove("input-error");
+        const r = await window.api.wlSetLeaveChannel(v);
+        setTxt(
+          "statusIds",
+          r?.ok ? "✅ Leave channel saved." : "❌ Failed to save Leave ID."
+        );
+      });
+
+      async function loadRolesOnce() {
+        const sel = $("roleSelect");
+        const btn = $("btn-save-role");
+        setTxt("statusRole", "Loading roles…");
+        sel.disabled = true;
+        btn.disabled = true;
+        sel.innerHTML = "<option>Loading…</option>";
+
+        try {
+          const r = await window.api.listRoles();
+          sel.innerHTML = "";
+          if (!r?.ok || !Array.isArray(r.roles))
+            throw new Error("listRoles failed");
+
+          for (const role of r.roles) {
+            const opt = document.createElement("option");
+            opt.value = role.id;
+            opt.textContent = `${role.name}${role.managed ? " [managed]" : ""}`;
+            if (role.managed) opt.disabled = true;
+            sel.appendChild(opt);
+          }
+          const g = await window.api.getVerifyRole();
+          if (g?.ok && g.roleId) sel.value = g.roleId;
+
+          setTxt("statusRole", "");
+          sel.disabled = false;
+          btn.disabled = false;
+          return true;
+        } catch {
+          sel.innerHTML = "";
+          const opt = document.createElement("option");
+          opt.textContent = "—";
+          opt.disabled = true;
+          opt.selected = true;
+          sel.appendChild(opt);
+          setTxt("statusRole", "❌ Couldn’t load roles. Press Refresh.");
+          return false;
+        }
+      }
+
+      async function loadRolesWithRetry(maxTries = 5) {
+        for (let i = 1; i <= maxTries; i++) {
+          const ok = await loadRolesOnce();
+          if (ok) return;
+          await new Promise((r) => setTimeout(r, Math.min(500 * i, 2000)));
+        }
+      }
+
+      if (window.api?.onStatusChange) {
+        window.api.onStatusChange((status) => {
+          if (String(status).toLowerCase() === "online") {
+            loadRolesWithRetry(3);
+          }
+        });
+      }
+
+      $("btn-refresh-roles").addEventListener("click", () =>
+        loadRolesWithRetry(3)
+      );
+      $("btn-save-role").addEventListener("click", async () => {
+        const id = $("roleSelect").value;
+        const r = await window.api.setVerifyRole(id);
+        setTxt(
+          "statusRole",
+          r?.ok ? "✅ Verification role saved." : "❌ Failed to save role."
+        );
+      });
+
+      $("btn-master-on").addEventListener("click", async () => {
+        const verifyId = $("verifyChannel").value.trim();
+
+        if (verifyId && !isSnowflake(verifyId)) {
+          $("verifyChannel").classList.add("input-error");
+          return setTxt(
+            "statusMaster",
+            "❌ Invalid Verification Channel ID. Use right-click channel → Copy ID (17–20 digits)."
+          );
+        }
+        $("verifyChannel").classList.remove("input-error");
+
+        setTxt("statusMaster", "Publishing…");
+        const payload = {
+          joinEmbed: {
+            title: $("wTitle").value || "",
+            description: $("wDesc").value || "",
+            image: $("wImg").value || "",
+          },
+          leaveEmbed: {
+            title: $("lTitle").value || "",
+            description: $("lDesc").value || "",
+            image: $("lImg").value || "",
+          },
+          verify: {
+            channelId: verifyId,
+            embed: {
+              title: $("verifyTitle").value || "Welcome",
+              description:
+                $("verifyDesc").value ||
+                "Pick a role from the menu, then press Accept. If you press Decline, you will be removed.",
+            },
+            buttons: [
+              {
+                customId: "verify_accept",
+                label: "✅ Accept",
+                style: "Success",
+              },
+              {
+                customId: "verify_decline",
+                label: "❌ Decline",
+                style: "Danger",
+              },
+            ],
+          },
+        };
+
+        const r = await window.api.wlPublishAll(payload);
+        setTxt(
+          "statusMaster",
+          r?.ok ? "✅ Published." : "❌ " + (r?.error || "Failed.")
+        );
+      });
+
+      $("btn-master-off").addEventListener("click", async () => {
+        setTxt("statusMaster", "Removing…");
+        const r = await window.api.wlRemoveAll();
+        setTxt(
+          "statusMaster",
+          r?.ok ? "✅ Removed & cleared." : "❌ " + (r?.error || "Failed.")
+        );
+        if (r?.ok) loadIds();
+      });
+
+      loadIds();
+      loadRolesWithRetry(5);
+      if (window.api?.onLog)
+        window.api.onLog((m) => console.log("%c[BOT]", "color:#4caf50", m));
+      if (window.api?.onStatusChange)
+        window.api.onStatusChange((s) =>
+          console.log("%c[STATUS]", "color:#2196f3", s)
+        );
+    </script>
+  </body>
+</html>

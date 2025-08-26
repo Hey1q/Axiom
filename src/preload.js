@@ -22,18 +22,16 @@ contextBridge.exposeInMainWorld("api", {
   startBot: () => ipcRenderer.send("bot-start"),
   stopBot: () => ipcRenderer.send("bot-stop"),
 
-  onLog: (callback) => on("log", (_e, msg) => callback(msg)),
-  onStatusChange: (callback) =>
-    on("status-change", (_e, status) => callback(status)),
+  onLog: (cb) => on("log", (_e, msg) => cb(msg)),
+  onStatusChange: (cb) => on("status-change", (_e, status) => cb(status)),
 
   getSessionInfo: () => invoke("get-session-info"),
-
   login: (credentials) => invoke("login", credentials),
   isOwner: (username) => invoke("is-owner-check", username),
   isDiscordOwner: (discordId) => invoke("check-discord-owner", discordId),
 
   startDiscordOAuth: () => invoke("start-discord-oauth"),
-  onOAuthCode: (callback) => on("oauth-code", (_e, code) => callback(code)),
+  onOAuthCode: (cb) => on("oauth-code", (_e, code) => cb(code)),
 
   openExternal: (url) => ipcRenderer.send("open-external-link", url),
   openWindow: (page) => invoke("open-window", page),
@@ -42,9 +40,7 @@ contextBridge.exposeInMainWorld("api", {
   getOwnerConfig: () => invoke("get-owner-config"),
   updateOwnerConfig: (config) => invoke("update-owner-config", config),
 
-  submitApplication: (data) => invoke("submit-application", data),
-
-  receive: (channel, callback) => on(channel, (_event, data) => callback(data)),
+  receive: (channel, cb) => on(channel, (_e, payload) => cb(payload)),
 
   isOnline: () => {
     try {
@@ -54,16 +50,33 @@ contextBridge.exposeInMainWorld("api", {
     }
   },
   onNetworkChange: (onOnline, onOffline) => {
-    const onFn = () => onOnline && onOnline();
-    const offFn = () => onOffline && onOffline();
-    window.addEventListener("online", onFn);
-    window.addEventListener("offline", offFn);
+    const a = () => onOnline && onOnline();
+    const b = () => onOffline && onOffline();
+    window.addEventListener("online", a);
+    window.addEventListener("offline", b);
     return () => {
-      window.removeEventListener("online", onFn);
-      window.removeEventListener("offline", offFn);
+      window.removeEventListener("online", a);
+      window.removeEventListener("offline", b);
     };
   },
 
   getEmbedTargets: () => invoke("embed:list"),
   sendEmbed: (payload) => invoke("embed:send", payload),
+
+  getVerifyState: () => invoke("verify:getState"),
+  publishVerify: (payload) => invoke("verify:publish", payload),
+  removeVerify: () => invoke("verify:remove"),
+
+  wlGet: () => invoke("wl:get"),
+  wlSetJoinChannel: (id) => invoke("wl:setJoinChannel", id),
+  wlSetLeaveChannel: (id) => invoke("wl:setLeaveChannel", id),
+  wlPublishAll: (payload) => invoke("wl:publishAll", payload),
+  wlRemoveAll: () => invoke("wl:removeAll"),
+
+  listRoles: () => invoke("roles:list"),
+  getVerifyRole: () => invoke("verify:getRole"),
+  setVerifyRole: (roleId) => invoke("verify:setRole", roleId),
+
+  onLog: (cb) => ipcRenderer.on("log", (_e, m) => cb(m)),
+  onStatusChange: (cb) => ipcRenderer.on("status-change", (_e, s) => cb(s)),
 });

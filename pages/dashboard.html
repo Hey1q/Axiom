@@ -50,13 +50,13 @@
         <div class="card-slider" id="card-slider">
           <div class="card ghost-card"></div>
 
-          <div class="card gradient1" id="staff-gate-card">
+          <div class="card gradient1" id="channel-registry-card">
             <img
-              src="../src/assets/staff_gate.png"
-              alt="Staff Gate Icon"
+              src="../src/assets/channels.png"
+              alt="Channels Icon"
               class="icon-img-large"
             />
-            <div class="card-label">Access Staff Gate</div>
+            <div class="card-label">Channel Registry</div>
           </div>
 
           <div class="card gradient2" id="giveaway-gate-card">
@@ -149,10 +149,11 @@
         });
 
         document
-          .getElementById("staff-gate-card")
+          .getElementById("channel-registry-card")
           .addEventListener("click", function () {
-            window.location.href = "staffgate.html";
+            window.api.openWindow("channels.html");
           });
+
         document
           .getElementById("giveaway-gate-card")
           .addEventListener("click", function () {
