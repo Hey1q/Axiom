@@ -16,15 +16,10 @@ async function safeReply(interaction, payload) {
   const base =
     typeof payload === "string" ? { content: payload } : payload || {};
   const data = { flags: MessageFlags.Ephemeral, ...base };
-
   try {
-    if (interaction.replied) {
-      return await interaction.followUp(data);
-    } else if (interaction.deferred) {
-      return await interaction.editReply(data);
-    } else {
-      return await interaction.reply(data);
-    }
+    if (interaction.replied) return await interaction.followUp(data);
+    if (interaction.deferred) return await interaction.editReply(data);
+    return await interaction.reply(data);
   } catch {
     return null;
   }
@@ -33,17 +28,12 @@ async function safeReply(interaction, payload) {
 function checkCooldown(interaction, command) {
   const cd = Number(command.cooldownMs || 0);
   if (!cd || !Number.isFinite(cd) || cd <= 0) return null;
-
   const name = command.data?.name || interaction.commandName;
   if (!cooldowns.has(name)) cooldowns.set(name, new Map());
   const perUser = cooldowns.get(name);
-
   const now = Date.now();
   const last = perUser.get(interaction.user.id) || 0;
-  const diff = now - last;
-
-  if (diff < cd) return cd - diff;
-
+  if (now - last < cd) return cd - (now - last);
   perUser.set(interaction.user.id, now);
   return null;
 }
@@ -52,29 +42,20 @@ module.exports = {
   name: Events.InteractionCreate,
   once: false,
 
-  /**
-   * @param {import('discord.js').Interaction} interaction
-   */
   async execute(interaction) {
     if (!interaction.inGuild()) return;
 
     if (interaction.isButton()) {
       try {
-        // Demo
         const map = {
           "test:primary": "Primary",
           "test:secondary": "Secondary",
           "test:success": "Success",
           "test:danger": "Danger",
         };
-
         const name = map[interaction.customId];
-
-        if (name) {
-          await safeReply(interaction, `✅ You pressed **${name}**`);
-        } else {
-          await interaction.deferUpdate().catch(() => {});
-        }
+        if (name) await safeReply(interaction, `✅ You pressed **${name}**`);
+        else await interaction.deferUpdate().catch(() => {});
       } catch (err) {
         console.error("🟥 button handler error:", err);
         try {
@@ -86,7 +67,7 @@ module.exports = {
 
     if (interaction.isAutocomplete()) {
       const cmd = interaction.client.commands.get(interaction.commandName);
-      if (cmd?.autocomplete && typeof cmd.autocomplete === "function") {
+      if (cmd?.autocomplete) {
         try {
           await cmd.autocomplete(interaction);
         } catch (err) {
@@ -106,10 +87,8 @@ module.exports = {
     if (
       !interaction.isChatInputCommand() &&
       !interaction.isContextMenuCommand?.()
-    ) {
+    )
       return;
-    }
-
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command || typeof command.execute !== "function") {
       return safeReply(
@@ -129,10 +108,9 @@ module.exports = {
 
     const waitMs = checkCooldown(interaction, command);
     if (waitMs !== null) {
-      const secs = Math.ceil(waitMs / 1000);
       return safeReply(
         interaction,
-        `⏳ Please wait ${secs}s before using this command again.`
+        `⏳ Please wait ${Math.ceil(waitMs / 1000)}s before using again.`
       );
     }
 
@@ -148,16 +126,12 @@ module.exports = {
 
     try {
       await command.execute(interaction);
-
       if (watchdogTriggered && interaction.deferred && !interaction.replied) {
-        await safeReply(
-          interaction,
-          "✅ The command is being processed. You'll see updates here."
-        );
+        await safeReply(interaction, "✅ The command is being processed.");
       }
     } catch (error) {
       console.error(
-        `🟥 interactionCreate error in '${interaction.commandName}' by ${interaction.user?.id}:`,
+        `🟥 interactionCreate error in '${interaction.commandName}':`,
         error
       );
       await safeReply(

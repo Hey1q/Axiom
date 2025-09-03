@@ -1,6 +1,3 @@
-// C:\Users\andre\Desktop\Axiom\src\storage\verifyState.js
-// Node v22.15.0 — store verification gate pointers inside owner-config (no extra JSON)
-
 const path = require("node:path");
 const { saveOwnerConfig, loadConfig } = require(path.join(
   __dirname,
@@ -11,14 +8,9 @@ const { saveOwnerConfig, loadConfig } = require(path.join(
 
 function createVerifyStateStore(/* baseDir unused */) {
   return {
-    /**
-     * Get saved verification gate for current guild:
-     * { guildId, channelId, messageId, createdAt, updatedAt } | null
-     */
     async get(guildId) {
       const cfg = loadConfig() || {};
       if (!cfg.GUILD_ID || String(cfg.GUILD_ID) !== String(guildId)) {
-        // single-guild app: still return what we have if guildId mismatches
       }
       if (!cfg.VERIFY_CHANNEL_ID || !cfg.VERIFY_MESSAGE_ID) return null;
       return {
@@ -30,10 +22,6 @@ function createVerifyStateStore(/* baseDir unused */) {
       };
     },
 
-    /**
-     * Save/update verification gate pointer.
-     * state: { guildId, channelId, messageId, createdAt? }
-     */
     async set(guildId, state) {
       const cfg = loadConfig() || {};
       const now = new Date().toISOString();
@@ -51,7 +39,6 @@ function createVerifyStateStore(/* baseDir unused */) {
       };
     },
 
-    /** Clear saved verification gate pointer. */
     async clear(/* guildId */) {
       const cfg = loadConfig() || {};
       delete cfg.VERIFY_CHANNEL_ID;

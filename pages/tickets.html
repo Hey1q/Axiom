@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Axiom • Tickets</title>
+    <link rel="stylesheet" href="styles/global.css" />
+    <link rel="stylesheet" href="styles/tickets.css?v=22" />
+    <link rel="stylesheet" href="alerts/notification.css" />
+  </head>
+  <body>
+    <div class="angled-header">
+      <header class="top-header tickets-header">
+        <div class="header-center">
+          <nav class="breadcrumbs">
+            <a href="dashboard.html" class="crumb">
+              <img
+                src="../src/assets/home.png"
+                alt="Home"
+                class="icon-inline"
+              />
+              <span>Dashboard</span>
+            </a>
+            <span class="crumb-sep">/</span>
+            <span class="crumb current">Tickets</span>
+          </nav>
+        </div>
+      </header>
+    </div>
+
+    <main class="page">
+      <section class="tabs">
+        <button class="tab active" data-tab="settings">Settings</button>
+        <button class="tab" data-tab="panel">Panel</button>
+      </section>
+
+      <section class="tab-pane active" id="pane-settings">
+        <div class="card">
+          <h2>Settings</h2>
+          <p class="muted">
+            Configure the tickets category, channel & the staff role.
+          </p>
+
+          <div class="settings-stack">
+            <div class="row-ctrl" id="row-category">
+              <label class="row-label">
+                <span class="row-title">Tickets category ID</span>
+                <input
+                  id="settings-category-id"
+                  placeholder="e.g. 112233445566778899"
+                  inputmode="numeric"
+                  pattern="\d{17,20}"
+                  aria-label="Discord Category ID"
+                />
+              </label>
+              <button id="settings-save-category" class="btn-primary btn-small">
+                Save Category
+              </button>
+            </div>
+
+            <div class="row-ctrl">
+              <label class="row-label">
+                <span class="row-title">Tickets channel ID</span>
+                <input
+                  id="settings-channel-id"
+                  placeholder="e.g. 123456789012345678"
+                  inputmode="numeric"
+                  pattern="\d{17,20}"
+                  aria-label="Discord Channel ID"
+                />
+              </label>
+              <button id="settings-save-channel" class="btn-primary btn-small">
+                Save Channel
+              </button>
+            </div>
+
+            <div class="row-ctrl">
+              <label class="row-label">
+                <span class="row-title">Staff role ID</span>
+                <input
+                  id="settings-staff-role"
+                  placeholder="e.g. 987654321098765432"
+                  inputmode="numeric"
+                  pattern="\d{17,20}"
+                  aria-label="Discord Role ID"
+                />
+              </label>
+              <button
+                id="settings-save-staff-role"
+                class="btn-primary btn-small"
+              >
+                Save Staff Role
+              </button>
+            </div>
+
+            <div class="row-actions">
+              <button
+                id="paths-open-transcripts"
+                class="secondary btn-small"
+                title="Open saved HTML chat histories of closed tickets"
+              >
+                Open Chat History
+              </button>
+            </div>
+          </div>
+
+          <div class="muted" id="settings-current">Saved —</div>
+        </div>
+      </section>
+
+      <section class="tab-pane" id="pane-panel">
+        <div class="card">
+          <h2>Panel</h2>
+          <p class="muted">
+            Publish a dropdown panel (Shop/Donations, Other) into the selected
+            channel.
+          </p>
+
+          <div class="form">
+            <div class="muted" id="panel-current">Saved: none</div>
+
+            <label>
+              Title
+              <input
+                id="panel-title"
+                placeholder="Open a Ticket"
+                value="Open a Ticket"
+              />
+            </label>
+
+            <label>
+              Description
+              <textarea
+                id="panel-description"
+                rows="4"
+                placeholder="Please choose a category from the menu below to open a ticket."
+              >
+Please choose a category from the menu below to open a ticket.</textarea
+              >
+            </label>
+
+            <label>
+              Thumbnail URL (optional)
+              <input
+                id="panel-thumb"
+                placeholder="https://example.com/image.gif (png, jpg, jpeg, gif, webp, bmp, svg)"
+                inputmode="url"
+                aria-label="Thumbnail URL"
+              />
+            </label>
+            <div class="muted">
+              If provided, this thumbnail will be used on the ticket panel
+              embed. Supports images and GIFs.
+            </div>
+
+            <div class="actions">
+              <button id="panel-remove-channel" class="secondary">
+                Remove Panel & Clear Config
+              </button>
+              <button id="panel-publish">Publish</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="alert-container" class="alert-container"></div>
+    <script src="alerts/notification.js"></script>
+
+    <script>
+      (function () {
+        const AX = (typeof window !== "undefined" ? window.api : null) || null;
+        const hasApi = AX !== null;
+        const $ = (id) => document.getElementById(id);
+
+        let LAST_CHANNEL_ID = null;
+        let LAST_CHANNEL_NAME = null;
+
+        function tabSwitch(key) {
+          document
+            .querySelectorAll(".tab")
+            .forEach((b) =>
+              b.classList.toggle("active", b.dataset.tab === key)
+            );
+          document
+            .querySelectorAll(".tab-pane")
+            .forEach((p) =>
+              p.classList.toggle("active", p.id === "pane-" + key)
+            );
+        }
+
+        function setCurrentChannelView(data) {
+          const el = $("panel-current");
+          const id = data?.channelId || null;
+          const name = data?.channelName || null;
+          LAST_CHANNEL_ID = id || LAST_CHANNEL_ID;
+          LAST_CHANNEL_NAME = name || LAST_CHANNEL_NAME;
+          if (el) {
+            el.innerHTML = id
+              ? "Saved: <code>#" +
+                (name || "unknown") +
+                "</code> (<code>" +
+                id +
+                "</code>)"
+              : "Saved: none";
+          }
+        }
+
+        async function loadTicketsConfig() {
+          if (!hasApi || !AX.ticketsGet) return;
+          try {
+            const res = await AX.ticketsGet();
+            if (res?.ok) setCurrentChannelView(res.data);
+          } catch {}
+        }
+
+        function isValidImageUrl(url) {
+          if (typeof url !== "string") return false;
+          const s = url.trim();
+          if (!s) return true;
+          const isHttp = /^https?:\/\//i.test(s);
+          const looksLikeImg =
+            /(\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?)$/i.test(s) ||
+            /\/emoji\/|\/attachments\//i.test(s);
+          return isHttp && looksLikeImg;
+        }
+
+        function setSettingsCurrent({
+          channelId,
+          channelName,
+          categoryId,
+          categoryName,
+          staffRoleId,
+        }) {
+          const el = $("settings-current");
+          const ch = channelId
+            ? "#" + (channelName || "unknown") + " (" + channelId + ")"
+            : "—";
+          const cat = categoryId
+            ? "#" + (categoryName || "category") + " (" + categoryId + ")"
+            : "—";
+          if (el) {
+            el.innerHTML =
+              "Saved → category <code>" +
+              cat +
+              "</code> • channel <code>" +
+              ch +
+              "</code> • staff role <code>" +
+              (staffRoleId || "—") +
+              "</code>";
+          }
+        }
+
+        async function loadSettingsSummary() {
+          let channelId = null,
+            channelName = null,
+            categoryId = null,
+            categoryName = null,
+            staffRoleId = null;
+          try {
+            const r = await AX?.ticketsGet?.();
+            if (r?.ok) {
+              channelId = r.data?.channelId || null;
+              channelName = r.data?.channelName || null;
+              categoryId = r.data?.categoryId || null;
+              categoryName = r.data?.categoryName || null;
+
+              if (channelId && $("settings-channel-id"))
+                $("settings-channel-id").value = channelId;
+              if (categoryId && $("settings-category-id"))
+                $("settings-category-id").value = categoryId;
+
+              setCurrentChannelView({ channelId, channelName });
+            }
+          } catch {}
+          try {
+            const r2 = await AX?.ticketsGetStaffRole?.();
+            if (r2?.ok) {
+              staffRoleId = r2.roleId || null;
+              if (staffRoleId && $("settings-staff-role"))
+                $("settings-staff-role").value = staffRoleId;
+            }
+          } catch {}
+          setSettingsCurrent({
+            channelId,
+            channelName,
+            categoryId,
+            categoryName,
+            staffRoleId,
+          });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+          document
+            .querySelectorAll(".tab")
+            .forEach((b) =>
+              b.addEventListener("click", () => tabSwitch(b.dataset.tab))
+            );
+
+          try {
+            window.api?.onLog?.((line) => {
+              const msg = String(line || "");
+              if (
+                /Ticket action failed/i.test(msg) ||
+                /Ticket interaction failed/i.test(msg) ||
+                (/tickets?:/i.test(msg) && /error|failed|exception/i.test(msg))
+              ) {
+                const pretty =
+                  msg.length > 600 ? msg.slice(0, 600) + " …(truncated)" : msg;
+                console.error("[tickets]", msg);
+                window.showNotification?.("fail", "Ticket error", pretty);
+              }
+            });
+          } catch {}
+
+          $("settings-save-category")?.addEventListener("click", async () => {
+            const id = ($("settings-category-id")?.value || "").trim();
+            if (!/^\d{17,20}$/.test(id)) {
+              return window.showNotification?.(
+                "fail",
+                "Invalid ID",
+                "Category ID is required and must be a valid Discord snowflake."
+              );
+            }
+            try {
+              const res = await AX?.ticketsSetCategory?.(id);
+              if (res?.ok) {
+                window.showNotification?.(
+                  "success",
+                  "Saved",
+                  "Category set to " +
+                    (res.categoryName ? "#" + res.categoryName : "—") +
+                    " (" +
+                    (res.categoryId || "—") +
+                    ")."
+                );
+                loadSettingsSummary();
+              } else {
+                window.showNotification?.(
+                  "fail",
+                  "Error",
+                  res?.error || "Failed to save category."
+                );
+              }
+            } catch (e) {
+              window.showNotification?.("fail", "Error", String(e));
+            }
+          });
+
+          $("settings-save-channel")?.addEventListener("click", async () => {
+            const id = ($("settings-channel-id")?.value || "").trim();
+            if (!/^\d{17,20}$/.test(id)) {
+              return window.showNotification?.(
+                "fail",
+                "Invalid ID",
+                "Channel ID must be a valid Discord snowflake."
+              );
+            }
+            try {
+              const res = await AX?.ticketsSetChannel?.(id);
+              if (res?.ok) {
+                window.showNotification?.(
+                  "success",
+                  "Saved",
+                  "Saved #" +
+                    (res.channelName || "channel") +
+                    " (" +
+                    res.channelId +
+                    ")."
+                );
+                LAST_CHANNEL_ID = res.channelId;
+                LAST_CHANNEL_NAME = res.channelName || LAST_CHANNEL_NAME;
+                loadSettingsSummary();
+                setCurrentChannelView({
+                  channelId: res.channelId,
+                  channelName: res.channelName,
+                });
+              } else {
+                window.showNotification?.(
+                  "fail",
+                  "Error",
+                  res?.error || "Failed to save channel."
+                );
+              }
+            } catch (e) {
+              window.showNotification?.("fail", "Error", String(e));
+            }
+          });
+
+          $("settings-save-staff-role")?.addEventListener("click", async () => {
+            const id = ($("settings-staff-role")?.value || "").trim();
+            if (id && !/^\d{17,20}$/.test(id)) {
+              return window.showNotification?.(
+                "fail",
+                "Invalid ID",
+                "Role ID must be a valid Discord snowflake."
+              );
+            }
+            try {
+              const res = await AX?.ticketsSetStaffRole?.(id || null);
+              if (res?.ok) {
+                window.showNotification?.(
+                  "success",
+                  "Saved",
+                  "Staff role set to " + (res.roleId || "none") + "."
+                );
+                loadSettingsSummary();
+              } else {
+                window.showNotification?.(
+                  "fail",
+                  "Error",
+                  res?.error || "Failed to save staff role."
+                );
+              }
+            } catch (e) {
+              window.showNotification?.("fail", "Error", String(e));
+            }
+          });
+
+          $("panel-publish")?.addEventListener("click", async () => {
+            const title = $("panel-title")?.value || "Open a Ticket";
+            const description =
+              $("panel-description")?.value ||
+              "Please choose a category from the menu below to open a ticket.";
+            const thumbnail = ($("panel-thumb")?.value || "").trim();
+            const isHttp = /^https?:\/\//i.test(thumbnail);
+            const looksLikeImg =
+              !thumbnail ||
+              /(\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?)$/i.test(thumbnail) ||
+              /\/emoji\/|\/attachments\//i.test(thumbnail);
+            if (thumbnail && !(isHttp && looksLikeImg)) {
+              return window.showNotification?.(
+                "fail",
+                "Invalid thumbnail URL",
+                "Please provide a direct http(s) image URL (png/jpg/gif/webp/bmp/svg)."
+              );
+            }
+            try {
+              const res = await AX?.ticketsPublish?.({
+                title,
+                description,
+                thumbnail,
+              });
+              if (res?.ok)
+                window.showNotification?.(
+                  "success",
+                  "Published",
+                  "Ticket panel published."
+                );
+              else
+                window.showNotification?.(
+                  "fail",
+                  "Publish error",
+                  res?.error || "Unknown error"
+                );
+            } catch (e) {
+              window.showNotification?.("fail", "Publish error", String(e));
+            }
+          });
+
+          $("panel-remove-channel")?.addEventListener("click", async () => {
+            try {
+              let cid = ($("settings-channel-id")?.value || "").trim();
+              if (!/^\d{17,20}$/.test(cid)) cid = LAST_CHANNEL_ID || "";
+              if (!/^\d{17,20}$/.test(cid)) {
+                const fromPrompt =
+                  (window.prompt &&
+                    window.prompt("Enter Discord Channel ID to purge:", "")) ||
+                  "";
+                if (!/^\d{17,20}$/.test(fromPrompt.trim())) {
+                  return window.showNotification?.(
+                    "fail",
+                    "Missing channel",
+                    "No valid Channel ID available to purge."
+                  );
+                }
+                cid = fromPrompt.trim();
+              }
+
+              const clearedRole = await AX?.ticketsSetStaffRole?.(null).catch(
+                () => null
+              );
+              if (clearedRole?.ok && $("settings-staff-role"))
+                $("settings-staff-role").value = "";
+
+              const clearedCat = await AX?.ticketsSetCategory?.(null).catch(
+                () => null
+              );
+              if (clearedCat?.ok && $("settings-category-id"))
+                $("settings-category-id").value = "";
+
+              const res = await AX?.ticketsPurgeChannel?.({
+                channelId: cid,
+                botOnly: true,
+                max: 1000,
+                deleteOlder: true,
+              });
+              const rm = await AX?.ticketsRemove?.();
+
+              LAST_CHANNEL_ID = null;
+              LAST_CHANNEL_NAME = null;
+              if ($("settings-channel-id")) $("settings-channel-id").value = "";
+              setCurrentChannelView({ channelId: null, channelName: null });
+              loadSettingsSummary();
+
+              const deleted = res?.ok ? res.deleted?.total ?? 0 : 0;
+              const parts = [];
+              parts.push(
+                clearedRole?.ok ? "cleared staff role" : "staff role unchanged"
+              );
+              parts.push(
+                clearedCat?.ok ? "cleared category" : "category unchanged"
+              );
+              parts.push(
+                res?.ok
+                  ? "purged " + deleted + " message(s)"
+                  : "purge failed: " + (res?.error || "unknown")
+              );
+              parts.push(
+                rm?.ok
+                  ? "config reset"
+                  : "config not reset: " + (rm?.error || "unknown")
+              );
+
+              window.showNotification?.(
+                res?.ok && rm?.ok ? "success" : "fail",
+                res?.ok && rm?.ok ? "Removed" : "Completed with issues",
+                parts.join(" • ")
+              );
+            } catch (e) {
+              window.showNotification?.("fail", "Error", String(e));
+            }
+          });
+
+          $("paths-open-transcripts")?.addEventListener("click", async () => {
+            try {
+              const res = await AX?.ticketsOpenLogsFolder?.("transcripts");
+              if (res?.ok) {
+                window.showNotification?.(
+                  "success",
+                  "Opened",
+                  `Folder: ${res.opened}`
+                );
+              } else {
+                window.showNotification?.(
+                  "fail",
+                  "Error",
+                  res?.error || "Failed to open transcripts."
+                );
+              }
+            } catch (e) {
+              window.showNotification?.("fail", "Error", String(e));
+            }
+          });
+
+          (async function init() {
+            await loadTicketsConfig();
+            await loadSettingsSummary();
+          })();
+        });
+      })();
+    </script>
+  </body>
+</html>

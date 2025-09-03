@@ -19,6 +19,7 @@ const {
 
 const { loadConfig } = require("./functions/setupHandler");
 const { registerVerifyButtons } = require("./handlers/verifyButtons");
+const { registerTicketInteractions } = require("./handlers/ticketInteractions");
 const cfgPrime = loadConfig() || {};
 if (cfgPrime.DATABASE_URL) process.env.DATABASE_URL = cfgPrime.DATABASE_URL;
 
@@ -69,6 +70,7 @@ class Bot extends EventEmitter {
     client.on(Events.Warn, (w) => this.log(`⚠️ ${w}`));
 
     registerVerifyButtons(client, { loadConfig, log: (m) => this.log(m) });
+    registerTicketInteractions(client, { loadConfig, log: (m) => this.log(m) });
   }
 
   _loadCommand(absPath) {
@@ -229,42 +231,46 @@ class Bot extends EventEmitter {
 
   _getEmbedFromPayload(embed) {
     const eb = new EmbedBuilder();
-    if (embed.title) eb.setTitle(String(embed.title).slice(0, 256));
-    if (embed.description)
-      eb.setDescription(String(embed.description).slice(0, 4096));
-    if (embed.url) eb.setURL(String(embed.url));
-    if (embed.color) {
+    const e = embed || {};
+
+    if (e.title) eb.setTitle(String(e.title).slice(0, 256));
+    if (e.description) eb.setDescription(String(e.description).slice(0, 4096));
+    if (e.url) eb.setURL(String(e.url));
+
+    if (e.color) {
       const clr =
-        typeof embed.color === "string"
-          ? embed.color.replace("#", "")
-          : embed.color;
+        typeof e.color === "string" ? e.color.replace("#", "") : e.color;
       try {
         eb.setColor(Number.isInteger(clr) ? clr : parseInt(clr, 16));
       } catch {}
     }
-    if (embed.thumbnail) eb.setThumbnail(String(embed.thumbnail));
-    if (embed.image) eb.setImage(String(embed.image));
 
-    if (
-      embed.author &&
-      (embed.author.name || embed.author.icon_url || embed.author.url)
-    ) {
+    const thumb =
+      typeof e.thumbnail === "string" ? e.thumbnail : e?.thumbnail?.url || null;
+    if (thumb) eb.setThumbnail(String(thumb));
+
+    const img = typeof e.image === "string" ? e.image : e?.image?.url || null;
+    if (img) eb.setImage(String(img));
+
+    if (e.author && (e.author.name || e.author.icon_url || e.author.url)) {
       eb.setAuthor({
-        name: (embed.author.name || "").toString().slice(0, 256),
-        iconURL: embed.author.icon_url || null,
-        url: embed.author.url || null,
+        name: (e.author.name || "").toString().slice(0, 256),
+        iconURL: e.author.icon_url || null,
+        url: e.author.url || null,
       });
     }
-    if (embed.footer && (embed.footer.text || embed.footer.icon_url)) {
-      eb.setFooter({
-        text: (embed.footer.text || "").toString().slice(0, 2048),
-        iconURL: embed.footer.icon_url || null,
-      });
-    }
-    if (embed.addTimestamp) eb.setTimestamp(new Date());
 
-    if (Array.isArray(embed.fields)) {
-      const fields = embed.fields
+    if (e.footer && (e.footer.text || e.footer.icon_url)) {
+      eb.setFooter({
+        text: (e.footer.text || "").toString().slice(0, 2048),
+        iconURL: e.footer.icon_url || null,
+      });
+    }
+
+    if (e.addTimestamp) eb.setTimestamp(new Date());
+
+    if (Array.isArray(e.fields)) {
+      const fields = e.fields
         .filter((f) => f && (f.name || f.value))
         .slice(0, 25)
         .map((f) => ({
@@ -274,6 +280,7 @@ class Bot extends EventEmitter {
         }));
       if (fields.length) eb.addFields(fields);
     }
+
     return eb;
   }
 
@@ -386,7 +393,44 @@ class Bot extends EventEmitter {
     return arr;
   }
 
-  async deleteMessage({ guildId, channelId, messageId }) {
+  async listCategories(guildId) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+
+    const all = await guild.channels.fetch();
+    const result = [];
+    for (const [, ch] of all) {
+      if (!ch) continue;
+      if (ch.type === ChannelType.GuildCategory) {
+        result.push({ id: ch.id, name: ch.name });
+      }
+    }
+    result.sort((a, b) => a.name.localeCompare(b.name));
+    return result;
+  }
+
+  async getCategoryName(guildId, categoryId) {
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+    const ch = await guild.channels.fetch(categoryId).catch(() => null);
+    if (!ch) return null;
+    return ch.type === ChannelType.GuildCategory ? ch.name : null;
+  }
+
+  async deleteMessage(arg1, arg2, arg3) {
+    let guildId, channelId, messageId;
+    if (typeof arg1 === "object" && arg1 !== null) {
+      ({ guildId, channelId, messageId } = arg1);
+    } else {
+      guildId = arg1;
+      channelId = arg2;
+      messageId = arg3;
+    }
+
     if (!this.client || !this.client.isReady())
       throw new Error("Bot is offline.");
     const guild = await this.client.guilds.fetch(guildId);
@@ -414,7 +458,6 @@ class Bot extends EventEmitter {
 
     const guild = await this.client.guilds.fetch(guildId);
     if (!guild) throw new Error("Guild not found.");
-
     const channel = await this._resolveChannel(guild, channelId);
     if (!channel)
       throw new Error("Channel not found or not text/announcement.");
@@ -429,22 +472,19 @@ class Bot extends EventEmitter {
     );
     const pageSize = Math.min(100, Math.max(1, batchSize));
 
-    let deleted = 0;
-    let scanned = 0;
-    let before;
-
+    let deleted = 0,
+      scanned = 0,
+      before;
     while (scanned < totalToScan) {
       const fetchLimit = Math.min(pageSize, totalToScan - scanned);
       const batch = await channel.messages
         .fetch(before ? { limit: fetchLimit, before } : { limit: fetchLimit })
         .catch(() => null);
-
       if (!batch || !batch.size) break;
 
       for (const m of batch.values()) {
         scanned++;
         if (m?.author?.id !== this.client.user.id) continue;
-
         const hasMarker =
           Array.isArray(m.embeds) &&
           m.embeds.some((e) => {
@@ -454,7 +494,6 @@ class Bot extends EventEmitter {
               "";
             return typeof t === "string" && t.includes(includes);
           });
-
         if (hasMarker) {
           await m.delete().catch(() => {});
           deleted++;
@@ -464,7 +503,6 @@ class Bot extends EventEmitter {
       const oldest = batch.last();
       if (!oldest) break;
       before = oldest.id;
-
       if (batch.size < fetchLimit) break;
     }
 
@@ -513,7 +551,7 @@ class Bot extends EventEmitter {
     return deleted;
   }
 
-  async deleteRecentBotEmbeds({ guildId, channelId, max = 1, scanLimit = 50 }) {
+  async deleteRecentBotEmbeds({ guildId, channelId, max = 1 }) {
     if (!this.client || !this.client.isReady())
       throw new Error("Bot is offline.");
     const guild = await this.client.guilds.fetch(guildId);
@@ -532,7 +570,6 @@ class Bot extends EventEmitter {
         if (m.author?.id !== this.client.user.id) continue;
         if (!m.embeds?.length) continue;
         if (m.components?.length) continue;
-
         await m.delete().catch(() => {});
         deleted++;
         if (deleted >= max) break;
@@ -564,6 +601,118 @@ class Bot extends EventEmitter {
     return total;
   }
 
+  async purgeChannelMessages(opts) {
+    const {
+      guildId,
+      channelId,
+      botOnly = true,
+      max = 1000,
+      deleteOlder = true,
+    } = opts || {};
+    if (!this.client || !this.client.isReady())
+      throw new Error("Bot is offline.");
+    if (!guildId || !channelId) throw new Error("guildId/channelId missing.");
+
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+    const channel = await this._resolveChannel(guild, channelId);
+    if (!channel)
+      throw new Error("Channel not found or not text/announcement.");
+
+    try {
+      const me = await guild.members.fetchMe();
+      const perms = channel.permissionsFor(me);
+      const need = ["ViewChannel", "ReadMessageHistory", "ManageMessages"];
+      const missing = need.filter((p) => !perms?.has?.(PermissionFlagsBits[p]));
+      if (missing.length)
+        throw new Error(`Missing permission(s): ${missing.join(", ")}`);
+    } catch (e) {
+      throw new Error(e?.message || "Permission check failed.");
+    }
+
+    const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    let before;
+    let scanned = 0,
+      deletedBulk = 0,
+      deletedSingle = 0;
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const isTarget = (m) =>
+      botOnly ? m.author?.id === this.client.user.id : true;
+
+    while (scanned < max) {
+      const fetchLimit = Math.min(100, max - scanned);
+      const batch = await channel.messages
+        .fetch(before ? { limit: fetchLimit, before } : { limit: fetchLimit })
+        .catch(() => null);
+      if (!batch || !batch.size) break;
+
+      scanned += batch.size;
+      before = batch.last()?.id;
+
+      const targets = batch.filter(isTarget);
+      if (!targets.size) continue;
+
+      const younger = targets.filter(
+        (m) => now - m.createdTimestamp < TWO_WEEKS
+      );
+      if (younger.size) {
+        const ids = [...younger.keys()];
+        for (let i = 0; i < ids.length; i += 100) {
+          const slice = ids.slice(i, i + 100);
+          let res = null;
+          try {
+            res = await channel.bulkDelete(slice, true);
+            if (res) deletedBulk += res.size;
+            else throw new Error("bulkDelete returned null");
+          } catch {
+            for (const id of slice) {
+              const msg = younger.get(id);
+              if (!msg) continue;
+              try {
+                await msg.delete();
+                deletedSingle++;
+              } catch {}
+              await sleep(300);
+            }
+          }
+          await sleep(700);
+        }
+      }
+
+      if (deleteOlder) {
+        const older = targets.filter(
+          (m) => now - m.createdTimestamp >= TWO_WEEKS
+        );
+        for (const msg of older.values()) {
+          try {
+            await msg.delete();
+            deletedSingle++;
+          } catch {}
+          await sleep(350);
+          if (deletedBulk + deletedSingle >= max) break;
+        }
+      }
+
+      if (deletedBulk + deletedSingle >= max) break;
+    }
+
+    this.log(
+      `🧹 Purge #${channel.name}: scanned=${scanned}, deleted=${
+        deletedBulk + deletedSingle
+      } (bulk=${deletedBulk}, single=${deletedSingle})`
+    );
+    return {
+      scanned,
+      deleted: {
+        bulk: deletedBulk,
+        single: deletedSingle,
+        total: deletedBulk + deletedSingle,
+      },
+    };
+  }
+
   async getChannelName(guildId, channelId) {
     if (!this.client || !this.client.isReady())
       throw new Error("Bot is offline.");
@@ -591,6 +740,7 @@ class Bot extends EventEmitter {
       buttons,
       mention,
       suppressEmbeds,
+      components: rawComponents,
     } = params || {};
     if (!guildId || !channelId) throw new Error("guildId/channelId missing.");
 
@@ -609,7 +759,9 @@ class Bot extends EventEmitter {
       throw new Error("Channel not found or not text/announcement.");
 
     const eb = this._getEmbedFromPayload(embed || {});
-    const components = this._buildComponents(buttons || []);
+    const rows = this._buildComponents(buttons || []);
+    if (Array.isArray(rawComponents) && rawComponents.length)
+      rows.push(...rawComponents);
 
     let content = messageContent ? String(messageContent) : "";
     if (mention) {
@@ -622,7 +774,7 @@ class Bot extends EventEmitter {
     const msg = await channel.send({
       content: content || undefined,
       embeds: [eb],
-      components: components.length ? components : undefined,
+      components: rows.length ? rows : undefined,
       flags: suppressEmbeds ? 1 << 2 : undefined,
     });
 

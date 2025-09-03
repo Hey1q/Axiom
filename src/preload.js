@@ -22,8 +22,8 @@ contextBridge.exposeInMainWorld("api", {
   startBot: () => ipcRenderer.send("bot-start"),
   stopBot: () => ipcRenderer.send("bot-stop"),
 
-  onLog: (cb) => on("log", (_e, msg) => cb(msg)),
-  onStatusChange: (cb) => on("status-change", (_e, status) => cb(status)),
+  onLog: (cb) => on("log", (_e, msg) => cb?.(msg)),
+  onStatusChange: (cb) => on("status-change", (_e, status) => cb?.(status)),
 
   getSessionInfo: () => invoke("get-session-info"),
   login: (credentials) => invoke("login", credentials),
@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld("api", {
   isDiscordOwner: (discordId) => invoke("check-discord-owner", discordId),
 
   startDiscordOAuth: () => invoke("start-discord-oauth"),
-  onOAuthCode: (cb) => on("oauth-code", (_e, code) => cb(code)),
+  onOAuthCode: (cb) => on("oauth-code", (_e, code) => cb?.(code)),
 
   openExternal: (url) => ipcRenderer.send("open-external-link", url),
   openWindow: (page) => invoke("open-window", page),
@@ -40,7 +40,7 @@ contextBridge.exposeInMainWorld("api", {
   getOwnerConfig: () => invoke("get-owner-config"),
   updateOwnerConfig: (config) => invoke("update-owner-config", config),
 
-  receive: (channel, cb) => on(channel, (_e, payload) => cb(payload)),
+  receive: (channel, cb) => on(channel, (_e, payload) => cb?.(payload)),
 
   isOnline: () => {
     try {
@@ -77,6 +77,29 @@ contextBridge.exposeInMainWorld("api", {
   getVerifyRole: () => invoke("verify:getRole"),
   setVerifyRole: (roleId) => invoke("verify:setRole", roleId),
 
-  onLog: (cb) => ipcRenderer.on("log", (_e, m) => cb(m)),
-  onStatusChange: (cb) => ipcRenderer.on("status-change", (_e, s) => cb(s)),
+  ticketsGet: () => invoke("tickets:get"),
+  ticketsSetChannel: (channelId) => invoke("tickets:setChannel", channelId),
+  ticketsRemove: () => invoke("tickets:remove"),
+  ticketsPublish: (payload) => invoke("tickets:publish", payload),
+
+  ticketsGetStaffRole: () => invoke("tickets:getStaffRole"),
+  ticketsSetStaffRole: (roleIdOrNull) =>
+    invoke("tickets:setStaffRole", roleIdOrNull),
+
+  ticketsGetCategory: () => invoke("tickets:getCategory"),
+  ticketsSetCategory: (categoryIdOrNull) =>
+    invoke("tickets:setCategory", categoryIdOrNull),
+
+  ticketsGetPaths: () => invoke("tickets:getPaths"),
+  ticketsSetPaths: (paths) => invoke("tickets:setPaths", paths),
+
+  ticketsEnsureDefaultLogs: () => invoke("tickets:ensureDefaultLogs"),
+
+  ticketsReadLogs: (query) => invoke("tickets:readLogs", query),
+
+  ticketsClearLogs: () => invoke("tickets:clearLogs"),
+
+  ticketsOpenLogsFolder: (which) => invoke("tickets:openLogsFolder", which),
+
+  ticketsPurgeChannel: (opts) => invoke("tickets:purge", opts),
 });
