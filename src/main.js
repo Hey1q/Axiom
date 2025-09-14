@@ -156,6 +156,7 @@ function resolvePageSafe(page) {
     "about.html",
     "channels.html",
     "tickets.html",
+    "giveaway.html",
   ]);
 
   if (whitelist.has(page)) return path.join(pagesRoot, page);
@@ -1284,6 +1285,1019 @@ ipcMain.handle("tickets:purge", async (_e, opts = {}) => {
   } catch (e) {
     console.error("tickets:purge error:", e);
     return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+for (const ch of [
+  "giveaway:listChannels",
+  "giveaway:channels",
+  "giveaway:list",
+  "giveaway:start",
+  "giveaway:edit",
+  "giveaway:end",
+  "giveaway:remove",
+  "giveaway:reroll",
+  "giveaway:getLogsChannel",
+  "giveaway:setLogsChannel",
+  "giveaway:clearLogsChannel",
+  "giveaway:logStart",
+]) {
+  try {
+    ipcMain.removeHandler(ch);
+  } catch {}
+}
+
+function toId(x) {
+  if (!x) return null;
+  if (typeof x === "string" && /^\d{17,20}$/.test(x)) return x;
+  if (typeof x === "object" && x.id && /^\d{17,20}$/.test(String(x.id)))
+    return String(x.id);
+  return null;
+}
+function toTag(x) {
+  if (!x) return null;
+  if (typeof x === "string") return x;
+  if (typeof x === "object" && (x.tag || x.username))
+    return x.tag || x.username;
+  return null;
+}
+
+function winnersAsIds(arr) {
+  return (arr || []).map((w) => toId(w)).filter(Boolean);
+}
+
+function winnersAsMentions(arr) {
+  return (arr || []).map((w) => {
+    const id = toId(w);
+    if (id) return `<@${id}> (${id})`;
+    const t = toTag(w) || "unknown";
+    const m = typeof t === "string" && t.startsWith("uid:") ? t.slice(4) : null;
+    return m && /^\d{17,20}$/.test(m) ? `<@${m}> (${m})` : t;
+  });
+}
+
+function winnersAsTags(arr) {
+  return (arr || []).map(
+    (w) => toTag(w) || (toId(w) ? `uid:${toId(w)}` : "unknown")
+  );
+}
+
+function winnersLinesMentionPlusId(arr) {
+  const ids = (arr || []).map((w) => toId(w)).filter(Boolean);
+  return ids.map((id) => `• <@${id}> (${id})`).join("\n");
+}
+
+function winnersInlineMentionPlusId(arr) {
+  const ids = (arr || []).map((w) => toId(w)).filter(Boolean);
+  return ids.map((id) => `<@${id}> (${id})`).join(", ");
+}
+
+function getLogsChannelId() {
+  const cfg = loadConfig() || {};
+  const s = (cfg.GIVEAWAY_LOGS_CHANNEL_ID || "").trim();
+  return s || null;
+}
+
+async function sendGiveawayStartLog({
+  guildId,
+  giveaway,
+  durationMinutes,
+  channelIdOverride,
+}) {
+  try {
+    const logChannelId = channelIdOverride || getLogsChannelId();
+    if (!logChannelId) return;
+
+    const endsUnix = giveaway.endsAt
+      ? Math.floor(new Date(giveaway.endsAt).getTime() / 1000)
+      : null;
+
+    let nameOfRole = (id) => `rid:${id}`;
+    try {
+      const roles = await bot.listRoles(guildId);
+      const map = Object.fromEntries(
+        (roles || []).map((r) => [String(r.id), r.name || String(r.id)])
+      );
+      nameOfRole = (id) => map[String(id)] ?? `rid:${id}`;
+    } catch {}
+
+    const m = giveaway.mention || {};
+    const roleIds = Array.isArray(m.roles)
+      ? m.roles.map(String).filter((x) => /^\d{17,20}$/.test(x))
+      : [];
+    const userIds = Array.isArray(m.users)
+      ? m.users.map(String).filter((x) => /^\d{17,20}$/.test(x))
+      : [];
+    const mentionEveryone = !!m.everyone;
+
+    const mentionLines = [];
+    if (mentionEveryone) mentionLines.push("📣 @everyone");
+    if (roleIds.length) {
+      const roleNames = roleIds.map((rid) => nameOfRole(rid));
+      mentionLines.push("🏷️ Roles: " + roleNames.join(", "));
+    }
+    if (userIds.length) {
+      mentionLines.push(`👥 Users: ${userIds.length}`);
+    }
+
+    const slice20 = (arr) => arr.slice(0, 20);
+    const overflowText = (all, shown) =>
+      all.length > shown.length ? `\n… +${all.length - shown.length} more` : "";
+
+    const roleLinesDetailed = roleIds.length
+      ? slice20(roleIds)
+          .map((id) => `• <@&${id}> (${id})`)
+          .join("\n") + overflowText(roleIds, slice20(roleIds))
+      : null;
+
+    const userLinesDetailed = userIds.length
+      ? slice20(userIds)
+          .map((id) => `• <@${id}> (${id})`)
+          .join("\n") + overflowText(userIds, slice20(userIds))
+      : null;
+
+    const fields = [
+      { name: "🆔 Giveaway", value: String(giveaway.id || "—"), inline: true },
+      { name: "#️⃣ Channel", value: `<#${giveaway.channelId}>`, inline: true },
+      ...(giveaway.messageId
+        ? [
+            {
+              name: "🧾 Message ID",
+              value: String(giveaway.messageId),
+              inline: true,
+            },
+          ]
+        : []),
+      ...(Number.isFinite(durationMinutes)
+        ? [{ name: "⏱️ Duration", value: `${durationMinutes}m`, inline: true }]
+        : []),
+      ...(Number.isFinite(giveaway.winners)
+        ? [
+            {
+              name: "👥 Winners",
+              value: String(giveaway.winners),
+              inline: true,
+            },
+          ]
+        : []),
+      ...(Number.isFinite(endsUnix)
+        ? [{ name: "🕒 Ends", value: `<t:${endsUnix}:F>`, inline: true }]
+        : []),
+      ...(mentionLines.length
+        ? [{ name: "🔔 Mentions", value: mentionLines.join("\n") }]
+        : []),
+      ...(roleLinesDetailed
+        ? [{ name: "🏷️ Mentioned Roles", value: roleLinesDetailed }]
+        : []),
+      ...(userLinesDetailed
+        ? [{ name: "👥 Mentioned Users", value: userLinesDetailed }]
+        : []),
+    ];
+
+    const embed = {
+      title: "🎁 Giveaway started",
+      description: giveaway.title ? `**${String(giveaway.title)}**` : undefined,
+      fields,
+      ...(giveaway.thumbUrl
+        ? { thumbnail: { url: String(giveaway.thumbUrl) } }
+        : {}),
+      ...(giveaway.imageUrl
+        ? { image: { url: String(giveaway.imageUrl) } }
+        : {}),
+      footer: { text: `GW:${giveaway.id || "?"}` },
+      timestamp: new Date().toISOString(),
+    };
+
+    await bot.sendEmbed({
+      guildId,
+      channelId: logChannelId,
+      messageContent: giveaway.url ? `🔗 Link: ${giveaway.url}` : undefined,
+      embed,
+      buttons: [],
+      allowedMentions: { parse: [], roles: [], users: [], replied_user: false },
+    });
+  } catch (e) {
+    console.error("sendGiveawayStartLog failed:", e?.message || e);
+  }
+}
+
+const { createLogFile, appendEntry, finalizeLog } = require(path.join(
+  __dirname,
+  "functions",
+  "giveawayLogger"
+));
+const GW = require(path.join(__dirname, "functions", "giveawayStore"));
+
+const GW_TIMERS = new Map();
+const GW_ENDING = new Set();
+
+async function sendGiveawayEditLog({
+  guildId,
+  before = {},
+  after = {},
+  giveaway = {},
+  channelIdOverride,
+}) {
+  try {
+    const logChannelId = channelIdOverride || getLogsChannelId();
+    if (!logChannelId) return;
+
+    const fmt = (v) =>
+      v === null || v === undefined || String(v).trim() === ""
+        ? "—"
+        : String(v);
+
+    const changed = [];
+    for (const key of [
+      "title",
+      "description",
+      "winners",
+      "thumbUrl",
+      "imageUrl",
+    ]) {
+      const b = before?.[key];
+      const a = after?.[key];
+      if (JSON.stringify(b) !== JSON.stringify(a)) {
+        changed.push({
+          name: `✏️ ${key}`,
+          value: `• before: ${fmt(b)}\n• after: ${fmt(a)}`,
+        });
+      }
+    }
+
+    const fields = [
+      { name: "🆔 Giveaway", value: String(giveaway.id || "—"), inline: true },
+      { name: "#️⃣ Channel", value: `<#${giveaway.channelId}>`, inline: true },
+      ...(giveaway.messageId
+        ? [
+            {
+              name: "🧾 Message ID",
+              value: String(giveaway.messageId),
+              inline: true,
+            },
+          ]
+        : []),
+      ...(changed.length ? changed : [{ name: "Διαφορές", value: "—" }]),
+    ];
+
+    const embed = {
+      title: "✏️ Giveaway edited",
+      description: giveaway.title ? `**${String(giveaway.title)}**` : undefined,
+      fields,
+      ...(giveaway.thumbUrl
+        ? { thumbnail: { url: String(giveaway.thumbUrl) } }
+        : {}),
+      ...(giveaway.imageUrl
+        ? { image: { url: String(giveaway.imageUrl) } }
+        : {}),
+      footer: { text: `GW:${giveaway.id || "?"}` },
+      timestamp: new Date().toISOString(),
+    };
+
+    await bot.sendEmbed({
+      guildId,
+      channelId: logChannelId,
+      messageContent: giveaway.url ? `🔗 Link: ${giveaway.url}` : undefined,
+      embed,
+      buttons: [],
+      allowedMentions: { parse: [], roles: [], users: [], replied_user: false },
+    });
+  } catch (e) {
+    console.error("sendGiveawayEditLog failed:", e?.message || e);
+  }
+}
+
+function scheduleEnd(gw) {
+  try {
+    const id = String(gw.id || "");
+    if (!id) return;
+    const old = GW_TIMERS.get(id);
+    if (old) clearTimeout(old);
+    const endsMs = new Date(gw.endsAt).getTime() || 0;
+    let delay = Math.min(Math.max(endsMs - Date.now(), 0), 0x7fffffff);
+    const t = setTimeout(async () => {
+      try {
+        await endGiveawayById(id, "auto");
+      } catch (e) {
+        console.error("giveaway auto-end error:", e?.message || e);
+      } finally {
+        GW_TIMERS.delete(id);
+      }
+    }, delay);
+    GW_TIMERS.set(id, t);
+  } catch (e) {
+    console.warn("scheduleEnd failed:", e?.message || e);
+  }
+}
+
+ipcMain.handle("giveaway:listChannels", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) throw new Error("GUILD_ID missing in config.");
+    const channels = await bot.listTextChannels(guildId);
+    return { ok: true, channels };
+  } catch (err) {
+    console.error("giveaway:listChannels error:", err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+});
+ipcMain.handle("giveaway:channels", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) throw new Error("GUILD_ID missing.");
+    const channels = await bot.listTextChannels(guildId);
+    return { ok: true, channels };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+ipcMain.handle("giveaway:list", async () => {
+  try {
+    const list = GW.readAll().sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+    );
+    return { ok: true, items: list };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("giveaway:start", async (_e, payload) => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) throw new Error("GUILD_ID missing.");
+
+    const channelId = String(payload?.channelId || "").trim();
+    const title = String(payload?.title || "Giveaway").trim();
+    const description = String(payload?.description || "").trim();
+    const winners = Math.max(1, parseInt(payload?.winners || 1, 10));
+    const durationMin = Math.max(1, parseInt(payload?.durationMin || 60, 10));
+    if (!/^\d{17,20}$/.test(channelId)) throw new Error("Invalid channelId");
+
+    const rawThumb = String(payload?.thumbUrl || "").trim();
+    const rawImage = String(payload?.imageUrl || "").trim();
+    const isUrl = (u) => /^https?:\/\//i.test(u) || /^data:image\//i.test(u);
+    const thumbUrl = isUrl(rawThumb) ? rawThumb : "";
+    const imageUrl = isUrl(rawImage) ? rawImage : "";
+
+    const id = Date.now().toString(36);
+    const endsAtMs = Date.now() + durationMin * 60000;
+    const endsAtIso = new Date(endsAtMs).toISOString();
+    const endsAtUnix = Math.floor(endsAtMs / 1000);
+
+    const m = payload?.mention || {};
+    const mentionEveryone = !!m.everyone;
+    const roleIds = Array.isArray(m.roles)
+      ? m.roles.map(String).filter((x) => /^\d{17,20}$/.test(x))
+      : [];
+    const userIds = Array.isArray(m.users)
+      ? m.users.map(String).filter((x) => /^\d{17,20}$/.test(x))
+      : [];
+    const pieces = [];
+    if (mentionEveryone) pieces.push("@everyone");
+    if (roleIds.length) pieces.push(roleIds.map((id) => `<@&${id}>`).join(" "));
+    if (userIds.length) pieces.push(userIds.map((id) => `<@${id}>`).join(" "));
+    const mentionLine = pieces.length ? pieces.join(" ") + "\n" : "";
+    const allowedMentions = {
+      parse: mentionEveryone ? ["everyone"] : [],
+      roles: roleIds,
+      users: userIds,
+      replied_user: false,
+    };
+
+    const headerLine = `🎁 **${title}** — ends **<t:${endsAtUnix}:R>**\nReact with 🎉 to enter!`;
+    const embed = {
+      title: `🎁 ${title}`,
+      description: description || "React with 🎉 to enter!",
+      fields: [
+        { name: "🎯 Winners", value: String(winners), inline: true },
+        { name: "🕒 Ends", value: `<t:${endsAtUnix}:F>`, inline: true },
+      ],
+      footer: { text: `🆔 Giveaway : ${id}` },
+      timestamp: new Date().toISOString(),
+      ...(thumbUrl ? { thumbnail: { url: thumbUrl } } : {}),
+      ...(imageUrl ? { image: { url: imageUrl } } : {}),
+    };
+
+    const msg = await bot.sendEmbed({
+      guildId,
+      channelId,
+      messageContent: mentionLine + headerLine,
+      embed,
+      buttons: [],
+      allowedMentions,
+      suppressEmbeds: false,
+    });
+
+    if (msg?.id && typeof bot.reactToMessage === "function") {
+      try {
+        await new Promise((r) => setTimeout(r, 500));
+        await bot.reactToMessage(guildId, channelId, msg.id, "🎉");
+      } catch (err) {
+        appendEntry(id, "warn", {
+          text: "Auto reaction failed",
+          error: String(err?.message || err),
+          code: String(err?.code || err?.status || err?.httpStatus || ""),
+        });
+      }
+    }
+
+    const rec = {
+      id,
+      guildId,
+      channelId,
+      messageId: msg?.id || null,
+      url: msg?.url || null,
+      title,
+      winners,
+      description,
+      status: "active",
+      createdAt: new Date().toISOString(),
+      endsAt: endsAtIso,
+      ...(thumbUrl ? { thumbUrl } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
+      mention: {
+        everyone: mentionEveryone,
+        roles: roleIds,
+        users: userIds,
+      },
+    };
+    GW.upsert(rec);
+
+    await sendGiveawayStartLog({
+      guildId,
+      giveaway: rec,
+      durationMinutes: durationMin,
+    });
+
+    scheduleEnd(rec);
+
+    createLogFile(id, {
+      title,
+      guildId,
+      channelId,
+      messageId: rec.messageId || "",
+      winners,
+      endsAt: endsAtIso,
+      ...(thumbUrl ? { thumbUrl } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
+    });
+    appendEntry(id, "start", { text: "Giveaway created via UI", meta: rec });
+
+    return { ok: true, giveaway: rec };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("giveaway:edit", async (_e, payload) => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) throw new Error("GUILD_ID missing.");
+
+    const id = String(payload?.id || "");
+    const gw = GW.get(id);
+    if (!gw) throw new Error("Giveaway not found");
+
+    const before = {
+      title: gw.title ?? null,
+      description: gw.description ?? null,
+      winners: gw.winners ?? null,
+      thumbUrl: gw.thumbUrl ?? "",
+      imageUrl: gw.imageUrl ?? "",
+    };
+
+    const patch = {};
+    if (payload.title != null) patch.title = String(payload.title);
+    if (payload.description != null)
+      patch.description = String(payload.description);
+    if (payload.winners != null) {
+      const n = parseInt(payload.winners, 10);
+      if (Number.isFinite(n) && n > 0) patch.winners = n;
+    }
+
+    const isUrl = (u) => /^https?:\/\//i.test(u) || /^data:image\//i.test(u);
+    if (payload.thumbUrl !== undefined) {
+      const t = String(payload.thumbUrl || "").trim();
+      patch.thumbUrl = isUrl(t) ? t : "";
+    }
+    if (payload.imageUrl !== undefined) {
+      const i = String(payload.imageUrl || "").trim();
+      patch.imageUrl = isUrl(i) ? i : "";
+    }
+
+    const endsUnix = Math.floor(new Date(gw.endsAt).getTime() / 1000);
+    const newEmbed = {
+      title: `🎁 ${patch.title ?? gw.title}`,
+      description:
+        (patch.description != null ? patch.description : gw.description) ||
+        "React with 🎉 to enter!",
+      fields: [
+        {
+          name: "🎯 Winners",
+          value: String(patch.winners ?? gw.winners),
+          inline: true,
+        },
+        { name: "🕒 Ends", value: `<t:${endsUnix}:F>`, inline: true },
+      ],
+      footer: { text: `🆔 Giveaway : ${id}` },
+      timestamp: new Date().toISOString(),
+      ...(patch.thumbUrl !== undefined
+        ? patch.thumbUrl
+          ? { thumbnail: { url: patch.thumbUrl } }
+          : {}
+        : gw.thumbUrl
+        ? { thumbnail: { url: gw.thumbUrl } }
+        : {}),
+      ...(patch.imageUrl !== undefined
+        ? patch.imageUrl
+          ? { image: { url: patch.imageUrl } }
+          : {}
+        : gw.imageUrl
+        ? { image: { url: gw.imageUrl } }
+        : {}),
+    };
+
+    let edited = false;
+    if (gw.messageId && typeof bot.editMessageEmbed === "function") {
+      try {
+        await bot.editMessageEmbed(
+          guildId,
+          gw.channelId,
+          gw.messageId,
+          newEmbed
+        );
+        edited = true;
+      } catch {}
+    }
+    if (!edited && typeof bot.sendEmbed === "function") {
+      try {
+        await bot.deleteMessage(guildId, gw.channelId, gw.messageId);
+      } catch {}
+      const msg = await bot.sendEmbed({
+        guildId,
+        channelId: gw.channelId,
+        messageContent: "",
+        embed: newEmbed,
+        buttons: [],
+      });
+      gw.messageId = msg?.id || gw.messageId;
+      gw.url = msg?.url || gw.url;
+    }
+
+    const updated = { ...gw, ...patch };
+    GW.upsert(updated);
+
+    appendEntry(id, "update", { text: "Giveaway edited", meta: patch });
+
+    await sendGiveawayEditLog({
+      guildId,
+      before,
+      after: {
+        title: updated.title ?? null,
+        description: updated.description ?? null,
+        winners: updated.winners ?? null,
+        thumbUrl: updated.thumbUrl ?? "",
+        imageUrl: updated.imageUrl ?? "",
+      },
+      giveaway: updated,
+    });
+
+    return { ok: true, giveaway: updated };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("giveaway:end", async (_e, payload) => {
+  try {
+    const id = String(payload?.id || "").trim();
+    if (!id) return { ok: false, error: "Missing giveaway ID." };
+
+    const { giveaway, winners } = await endGiveawayById(id, "UI");
+    return { ok: true, giveaway, winners };
+  } catch (e) {
+    console.error("giveaway:end failed:", e);
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+async function endGiveawayById(id, endedBy = "UI") {
+  id = String(id);
+
+  const cfg = loadConfig() || {};
+  const guildId = (cfg.GUILD_ID || "").trim();
+  if (!guildId) throw new Error("GUILD_ID missing.");
+
+  if (GW_ENDING.has(id)) {
+    const g = GW.get(id);
+    return { giveaway: g, winners: g?.winnerList || [] };
+  }
+  GW_ENDING.add(id);
+
+  try {
+    const t = GW_TIMERS.get(id);
+    if (t) {
+      clearTimeout(t);
+      GW_TIMERS.delete(id);
+    }
+
+    const gw = GW.get(id);
+    if (!gw) throw new Error("Giveaway not found");
+    if (gw.status === "ended")
+      return { giveaway: gw, winners: gw.winnerList || [] };
+
+    let winners = [];
+    if (gw.messageId && typeof bot.pickReactWinners === "function") {
+      try {
+        winners = await bot.pickReactWinners({
+          guildId,
+          channelId: gw.channelId,
+          messageId: gw.messageId,
+          emoji: "🎉",
+          count: gw.winners,
+        });
+      } catch {}
+    }
+
+    const bannedIds = new Set();
+    try {
+      if (typeof bot.getSelfUserId === "function") {
+        const selfId = await bot.getSelfUserId().catch(() => null);
+        if (selfId) bannedIds.add(String(selfId));
+      }
+    } catch {}
+    if (cfg.DISCORD_CLIENT_ID) bannedIds.add(String(cfg.DISCORD_CLIENT_ID));
+
+    const seen = new Set();
+    winners = (winners || []).filter((u) => {
+      if (u && u.bot === true) return false;
+      const idStr = toId(u);
+      const key = idStr || toTag(u) || JSON.stringify(u);
+      if (!key) return false;
+      if (idStr && bannedIds.has(idStr)) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const winnersBlock = winnersLinesMentionPlusId(winners);
+    const winnersInline = winnersInlineMentionPlusId(winners);
+
+    let announcedByEdit = false;
+    try {
+      if (gw.messageId && typeof bot.editMessageEmbed === "function") {
+        await bot.editMessageEmbed(guildId, gw.channelId, gw.messageId, {
+          title: `🎁 ${gw.title} — ENDED`,
+          description: winners.length
+            ? `Winners:\n${winnersBlock}`
+            : "Ended. No winners.",
+          footer: { text: `🆔 Giveaway: ${id}` },
+        });
+        announcedByEdit = true;
+      }
+    } catch {}
+
+    if (!announcedByEdit) {
+      try {
+        await bot.sendEmbed({
+          guildId,
+          channelId: gw.channelId,
+          messageContent: winners.length
+            ? `🎉 **Winners**: ${winnersInline}`
+            : "🎉 Giveaway ended. No winners.",
+          embed: {
+            title: `🎁 ${gw.title} — ENDED`,
+            description: winners.length
+              ? `Congratulations!\n${winnersBlock}`
+              : "No winners.",
+            footer: { text: `🆔 Giveaway: ${id}` },
+          },
+          buttons: [],
+        });
+      } catch (announceErr) {
+        console.warn(
+          "giveaway announce failed (continuing to log):",
+          announceErr?.message || announceErr
+        );
+      }
+    }
+
+    const ended = {
+      ...gw,
+      status: "ended",
+      endedAt: new Date().toISOString(),
+      ...(winners?.length ? { winnerList: winners } : {}),
+    };
+    GW.upsert(ended);
+
+    try {
+      await sendGiveawayEndLog({
+        guildId,
+        giveaway: { ...ended },
+        winners: winnersAsTags(winners),
+        reason: endedBy === "auto" ? "expired" : "manual",
+      });
+    } catch (logErr) {
+      console.error("sendGiveawayEndLog failed:", logErr?.message || logErr);
+    }
+
+    finalizeLog(
+      id,
+      (winners || []).map((w) => toTag(w) || String(w)),
+      endedBy
+    );
+
+    return { giveaway: ended, winners: winners || [] };
+  } finally {
+    GW_ENDING.delete(id);
+  }
+}
+
+async function sendGiveawayEndLog({
+  guildId,
+  giveaway,
+  winners = [],
+  reason = "manual", // "manual" | "expired" | "reroll"
+  channelIdOverride,
+}) {
+  try {
+    const logChannelId = channelIdOverride || getLogsChannelId();
+    if (!logChannelId) return;
+
+    const endedUnix = giveaway.endedAt
+      ? Math.floor(new Date(giveaway.endedAt).getTime() / 1000)
+      : Math.floor(Date.now() / 1000);
+
+    const reasonLabel =
+      reason === "expired"
+        ? "⏰ Auto/Expired"
+        : reason === "reroll"
+        ? "🔁 Reroll"
+        : "🛑 Manual";
+
+    let idList = Array.isArray(giveaway?.winnerList)
+      ? giveaway.winnerList.map((w) => toId(w)).filter(Boolean)
+      : [];
+
+    if (!idList.length && Array.isArray(winners) && winners.length) {
+      const rx = /(uid:)?(\d{17,20})/;
+      idList = winners
+        .map((s) => {
+          const m = String(s).match(rx);
+          return m ? m[2] : null;
+        })
+        .filter(Boolean);
+    }
+
+    idList = [...new Set(idList)];
+
+    const winnersLines =
+      idList.length > 0
+        ? idList.map((id) => `• <@${id}> (${id})`).join("\n")
+        : (winners || [])
+            .slice(0, 20)
+            .map((w) => `• ${w}`)
+            .join("\n");
+
+    const totalShown = idList.length || winners.length;
+
+    const fields = [
+      { name: "🆔 Giveaway", value: String(giveaway.id || "—"), inline: true },
+      { name: "#️⃣ Channel", value: `<#${giveaway.channelId}>`, inline: true },
+      ...(giveaway.messageId
+        ? [
+            {
+              name: "🧾 Message ID",
+              value: String(giveaway.messageId),
+              inline: true,
+            },
+          ]
+        : []),
+      { name: "📍 Reason", value: reasonLabel, inline: true },
+      { name: "🕒 Ended", value: `<t:${endedUnix}:F>`, inline: true },
+      {
+        name: "📣 Result",
+        value: totalShown ? `${totalShown} winner(s)` : "No winners",
+        inline: true,
+      },
+      ...(totalShown ? [{ name: "🏆 Winners", value: winnersLines }] : []),
+    ];
+
+    const embed = {
+      title: "🛑 Giveaway ended",
+      description: giveaway.title ? `**${String(giveaway.title)}**` : undefined,
+      fields,
+      ...(giveaway.thumbUrl
+        ? { thumbnail: { url: String(giveaway.thumbUrl) } }
+        : {}),
+      ...(giveaway.imageUrl
+        ? { image: { url: String(giveaway.imageUrl) } }
+        : {}),
+      footer: { text: `GW:${giveaway.id || "?"}` },
+      timestamp: new Date().toISOString(),
+    };
+
+    await bot.sendEmbed({
+      guildId,
+      channelId: logChannelId,
+      messageContent: giveaway.url ? `🔗 Link: ${giveaway.url}` : undefined,
+      embed,
+      buttons: [],
+      allowedMentions: { parse: [], roles: [], users: [], replied_user: false },
+    });
+  } catch (e) {
+    console.error("sendGiveawayEndLog failed:", e?.message || e);
+  }
+}
+
+ipcMain.handle("giveaway:remove", async (_e, id) => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    const gw = GW.get(String(id));
+
+    const t = GW_TIMERS.get(String(id));
+    if (t) {
+      clearTimeout(t);
+      GW_TIMERS.delete(String(id));
+    }
+
+    if (gw && gw.messageId) {
+      try {
+        await bot.deleteMessage(guildId, gw.channelId, gw.messageId);
+      } catch {}
+    }
+    GW.remove(String(id));
+    appendEntry(String(id), "update", { text: "Giveaway removed from store" });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("giveaway:reroll", async (_e, payload) => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) throw new Error("GUILD_ID missing.");
+
+    const id = String(payload?.id || "");
+    const count = Math.max(1, parseInt(payload?.count || 1, 10));
+    const gw = GW.get(id);
+    if (!gw) throw new Error("Giveaway not found");
+    if (!gw.messageId) throw new Error("No messageId saved for this giveaway");
+    if (typeof bot.pickReactWinners !== "function")
+      throw new Error("Reroll not supported by bot adapter");
+
+    let winners = await bot.pickReactWinners({
+      guildId,
+      channelId: gw.channelId,
+      messageId: gw.messageId,
+      emoji: "🎉",
+      count,
+    });
+
+    const bannedIds = new Set();
+    try {
+      if (typeof bot.getSelfUserId === "function") {
+        const selfId = await bot.getSelfUserId().catch(() => null);
+        if (selfId) bannedIds.add(String(selfId));
+      }
+    } catch {}
+    if (cfg.DISCORD_CLIENT_ID) bannedIds.add(String(cfg.DISCORD_CLIENT_ID));
+
+    const seen = new Set();
+    winners = (winners || []).filter((u) => {
+      if (!u) return false;
+      if (u.bot === true) return false;
+      const idStr = toId(u);
+      const tagStr = toTag(u);
+      if (idStr && bannedIds.has(idStr)) return false;
+      const key =
+        (idStr && `id:${idStr}`) ||
+        (tagStr && `tag:${tagStr.toLowerCase()}`) ||
+        JSON.stringify(u);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const winnerIds = (winners || []).map((w) => toId(w)).filter(Boolean);
+    const winnersInline = winnerIds.map((id) => `<@${id}> (${id})`).join(", ");
+    const winnersLines = winnerIds.map((id) => `• <@${id}> (${id})`).join("\n");
+
+    await bot.sendEmbed({
+      guildId,
+      channelId: gw.channelId,
+      messageContent: winnerIds.length
+        ? `🔁 **Reroll winners**: ${winnersInline}`
+        : "🔁 Reroll: no winners found.",
+      embed: {
+        title: `🎁 ${gw.title} — REROLL`,
+        description: winnerIds.length
+          ? `New winners:\n${winnersLines}`
+          : "No winners found.",
+        footer: { text: `🆔 Giveaway : ${id}` },
+      },
+      buttons: [],
+    });
+
+    appendEntry(id, "update", {
+      text: "Reroll executed",
+      meta: { count: String(count) },
+      winners: (winners || []).map((w) => toTag(w) || String(w)),
+    });
+
+    const hist = Array.isArray(gw.rerolls) ? gw.rerolls : [];
+    const tagListForHistory = winnerIds.map((uid) => `uid:${uid}`);
+    hist.push({
+      at: new Date().toISOString(),
+      count,
+      winners: tagListForHistory,
+    });
+    GW.upsert({ ...gw, rerolls: hist });
+
+    await sendGiveawayEndLog({
+      guildId,
+      giveaway: { ...gw },
+      winners: tagListForHistory,
+      reason: "reroll",
+    });
+
+    return { ok: true, winners: winners || [] };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("giveaway:getLogsChannel", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    return { ok: true, channelId: cfg.GIVEAWAY_LOGS_CHANNEL_ID || null };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+ipcMain.handle("giveaway:setLogsChannel", async (_e, rawId) => {
+  try {
+    const s = String(rawId || "").trim();
+    if (!/^\d{17,20}$/.test(s))
+      return { ok: false, error: "Invalid channel ID format." };
+    const cfg = loadConfig() || {};
+    cfg.GIVEAWAY_LOGS_CHANNEL_ID = s;
+    await saveOwnerConfig(cfg);
+    return { ok: true, channelId: s };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+ipcMain.handle("giveaway:clearLogsChannel", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    cfg.GIVEAWAY_LOGS_CHANNEL_ID = null;
+    await saveOwnerConfig(cfg);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("giveaway:logStart", async (_e, payload = {}) => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!guildId) return { ok: false, error: "GUILD_ID missing." };
+
+    const channelId = String(payload.channelId || "").trim();
+    if (!/^\d{17,20}$/.test(channelId))
+      return { ok: false, error: "Invalid channel ID." };
+
+    const gw = payload.giveaway || {};
+    await sendGiveawayStartLog({
+      guildId,
+      giveaway: gw,
+      durationMinutes: null,
+      channelIdOverride: channelId,
+    });
+
+    return { ok: true };
+  } catch (e) {
+    console.error("giveaway:logStart failed:", e);
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+app.whenReady().then(() => {
+  try {
+    const actives = GW.readAll().filter((x) => x.status === "active");
+    for (const gw of actives) scheduleEnd(gw);
+  } catch (e) {
+    console.warn("failed to schedule previous giveaways:", e?.message || e);
   }
 });
 

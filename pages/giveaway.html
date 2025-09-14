@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Axiom • Giveaway Manager</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               style-src 'self' 'unsafe-inline';
+               img-src * data: http: https:;
+               script-src 'self' 'unsafe-inline'"
+    />
+    <link rel="stylesheet" href="./styles/giveaway.css" />
+  </head>
+  <body>
+    <div class="crumbbar">
+      <div class="crumbs">
+        <a href="#" id="nav-dashboard" class="crumb">
+          <span class="crumb-emoji">🏠</span><span>Dashboard</span>
+        </a>
+        <span class="crumb-sep">/</span>
+        <span class="crumb current">
+          <span class="crumb-emoji">🎁</span><span>Giveaway</span>
+        </span>
+      </div>
+
+      <div class="crumb-actions">
+        <button class="btn ghost" id="btn-reload">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <main class="container">
+      <section class="card">
+        <div class="card-title"><span class="chip">CREATE / EDIT</span></div>
+
+        <form class="giveaway-form" id="giveaway-form" onsubmit="return false;">
+          <div class="grid">
+            <div class="field">
+              <label for="logsChannelId">🧾 Logs Channel ID</label>
+              <div class="inline" style="gap: 8px">
+                <input
+                  id="logsChannelId"
+                  class="input"
+                  placeholder="123456789012345678"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  style="flex: 1"
+                />
+                <button
+                  class="btn tiny ghost"
+                  id="btn-logs-paste"
+                  type="button"
+                >
+                  Paste
+                </button>
+                <button class="btn tiny" id="btn-logs-save" type="button">
+                  Save
+                </button>
+                <button
+                  class="btn tiny danger"
+                  id="btn-logs-remove"
+                  type="button"
+                >
+                  Remove
+                </button>
+              </div>
+              <small id="logsChannelStatus" class="small dim">Not set</small>
+            </div>
+
+            <div class="field">
+              <label for="channel">#️⃣ Channel</label>
+              <select id="channel" class="input">
+                <option disabled selected>Loading…</option>
+              </select>
+              <small id="channels-note" class="small dim" style="display: none"
+                >Channels refreshed.</small
+              >
+            </div>
+
+            <div class="field">
+              <label for="title">🎁 Title</label>
+              <input id="title" class="input" placeholder="Giveaway title" />
+            </div>
+
+            <div class="field">
+              <label for="winners">👥 Winners</label>
+              <div class="stepper">
+                <button
+                  type="button"
+                  class="btn-step"
+                  id="win-dec"
+                  aria-label="Decrease"
+                >
+                  ➖
+                </button>
+                <input
+                  id="winners"
+                  class="input stepper-input"
+                  type="number"
+                  min="1"
+                  value="1"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                />
+                <button
+                  type="button"
+                  class="btn-step"
+                  id="win-inc"
+                  aria-label="Increase"
+                >
+                  ➕
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="duration">⏳ Duration</label>
+              <div class="inline">
+                <div class="stepper">
+                  <button
+                    type="button"
+                    class="btn-step"
+                    id="dur-dec"
+                    aria-label="Decrease"
+                  >
+                    ➖
+                  </button>
+                  <input
+                    id="duration"
+                    class="input stepper-input"
+                    type="number"
+                    min="1"
+                    value="60"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                  />
+                  <button
+                    type="button"
+                    class="btn-step"
+                    id="dur-inc"
+                    aria-label="Increase"
+                  >
+                    ➕
+                  </button>
+                </div>
+                <select id="durationUnit" class="input" style="width: 120px">
+                  <option value="minutes" selected>⏱️ Minutes</option>
+                  <option value="hours">🕒 Hours</option>
+                  <option value="days">📅 Days</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field field-span-2">
+              <label for="desc">📝 Description</label>
+              <textarea
+                id="desc"
+                class="input"
+                rows="3"
+                placeholder="Describe the prize & rules…"
+              ></textarea>
+            </div>
+
+            <div class="field field-span-2">
+              <label>🖼️ Media (optional)</label>
+
+              <div
+                class="media-grid"
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(2, minmax(0, 1fr));
+                  gap: 14px;
+                "
+              >
+                <div
+                  class="media-field"
+                  style="display: flex; flex-direction: column; gap: 8px"
+                >
+                  <div
+                    class="media-header"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                    "
+                  >
+                    <span style="color: var(--fg); font-weight: 600"
+                      >Thumbnail URL</span
+                    >
+                    <span
+                      id="thumbBadge"
+                      style="
+                        font-size: 12px;
+                        padding: 2px 8px;
+                        border-radius: 999px;
+                        border: 1px solid var(--border);
+                        color: var(--muted);
+                      "
+                      >Empty</span
+                    >
+                  </div>
+                  <div
+                    class="media-input-row"
+                    style="display: flex; gap: 8px; align-items: center"
+                  >
+                    <input
+                      id="thumbUrl"
+                      class="input"
+                      style="flex: 1"
+                      placeholder="https://cdn.discordapp.com/... (square)"
+                    />
+                    <div class="field-actions" style="display: flex; gap: 6px">
+                      <button
+                        type="button"
+                        class="btn tiny ghost"
+                        id="btn-thumb-paste"
+                      >
+                        Paste
+                      </button>
+                      <button
+                        type="button"
+                        class="btn tiny ghost"
+                        id="btn-thumb-clear"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  <small class="help"
+                    >Small square shown on the right of the embed.</small
+                  >
+                  <div
+                    class="thumb-preview-wrap"
+                    style="display: flex; align-items: center; gap: 10px"
+                  >
+                    <div
+                      style="
+                        width: 64px;
+                        height: 64px;
+                        border: 1px solid var(--border);
+                        border-radius: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: rgba(255, 255, 255, 0.03);
+                      "
+                    >
+                      <img
+                        id="thumbPreview"
+                        alt="Thumb"
+                        style="
+                          display: none;
+                          max-width: 100%;
+                          max-height: 100%;
+                          border-radius: 8px;
+                        "
+                      />
+                    </div>
+                    <span class="small dim">64×64 preview</span>
+                  </div>
+                </div>
+
+                <div
+                  class="media-field"
+                  style="display: flex; flex-direction: column; gap: 8px"
+                >
+                  <div
+                    class="media-header"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                    "
+                  >
+                    <span style="color: var(--fg); font-weight: 600"
+                      >Image URL</span
+                    >
+                    <span
+                      id="imageBadge"
+                      style="
+                        font-size: 12px;
+                        padding: 2px 8px;
+                        border-radius: 999px;
+                        border: 1px solid var(--border);
+                        color: var(--muted);
+                      "
+                      >Empty</span
+                    >
+                  </div>
+                  <div
+                    class="media-input-row"
+                    style="display: flex; gap: 8px; align-items: center"
+                  >
+                    <input
+                      id="imageUrl"
+                      class="input"
+                      style="flex: 1"
+                      placeholder="https://cdn.discordapp.com/... (wide)"
+                    />
+                    <div class="field-actions" style="display: flex; gap: 6px">
+                      <button
+                        type="button"
+                        class="btn tiny ghost"
+                        id="btn-image-paste"
+                      >
+                        Paste
+                      </button>
+                      <button
+                        type="button"
+                        class="btn tiny ghost"
+                        id="btn-image-clear"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  <small class="help">Large image shown below the embed.</small>
+                  <div
+                    class="image-preview-wrap"
+                    style="
+                      border: 1px solid var(--border);
+                      border-radius: 12px;
+                      padding: 6px;
+                      background: rgba(255, 255, 255, 0.03);
+                    "
+                  >
+                    <img
+                      id="imagePreview"
+                      alt="Image"
+                      style="
+                        display: none;
+                        width: 100%;
+                        max-height: 220px;
+                        object-fit: cover;
+                        border-radius: 8px;
+                      "
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field field-span-2">
+              <label>🔔 Mentions</label>
+              <div class="inline" style="margin-bottom: 8px">
+                <label style="display: flex; align-items: center; gap: 8px">
+                  <input id="pingEveryone" type="checkbox" />
+                  <span>Ping <b>@everyone</b></span>
+                </label>
+              </div>
+              <div class="field">
+                <label>🛎️ Roles (multi-select)</label>
+                <div
+                  id="rolesBox"
+                  class="input"
+                  style="padding: 10px 12px; min-height: 120px; overflow: auto"
+                >
+                  <div class="dim">No roles available</div>
+                </div>
+              </div>
+              <small class="small dim"
+                >Tip: Enable <b>@everyone</b> or select one or more roles. (Both
+                can be used together.)</small
+              >
+            </div>
+
+            <div class="field">
+              <label for="editId">🔑 Giveaway</label>
+              <div class="inline">
+                <input
+                  id="editId"
+                  class="input"
+                  placeholder="ID for edit/end"
+                />
+                <button class="btn tiny" id="btn-copy-id" type="button">
+                  Copy
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary" id="btn-start">🎉 Start</button>
+            <button class="btn" id="btn-save">💾 Save</button>
+            <button class="btn danger" id="btn-end">🛑 End</button>
+
+            <div class="stepper">
+              <button
+                type="button"
+                class="btn-step"
+                id="rr-dec"
+                aria-label="Decrease"
+              >
+                ➖
+              </button>
+              <input
+                id="rerollCount"
+                class="input stepper-input"
+                type="number"
+                min="1"
+                value="1"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                aria-label="Reroll count"
+              />
+              <button
+                type="button"
+                class="btn-step"
+                id="rr-inc"
+                aria-label="Increase"
+              >
+                ➕
+              </button>
+              <button class="btn warn" id="btn-reroll" type="button">
+                🔁 Reroll
+              </button>
+            </div>
+          </div>
+
+          <p class="meta" id="create-meta"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-title"><span class="chip">ACTIVE GIVEAWAYS</span></div>
+        <div id="active-list" class="list empty">
+          No active giveaways (UI preview).
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (s, r = document) => r.querySelector(s);
+      const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+      function toast(msg, kind = "info") {
+        const el = document.createElement("div");
+        el.className = "toast " + kind;
+        el.textContent = msg;
+        document.body.appendChild(el);
+        requestAnimationFrame(() => el.classList.add("show"));
+        setTimeout(() => {
+          el.classList.remove("show");
+          setTimeout(() => el.remove(), 180);
+        }, 2200);
+      }
+
+      $("#nav-dashboard")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (window.api?.openWindow) window.api.openWindow("dashboard.html");
+        else location.href = "dashboard.html";
+      });
+
+      async function callOrToast(method, payload) {
+        if (!window.api?.[method]) return { ok: false, missing: true };
+        try {
+          return await window.api[method](payload);
+        } catch (e) {
+          console.error(e);
+          toast("Action failed", "error");
+          return { ok: false, error: String(e?.message || e) };
+        }
+      }
+      const isSnowflake = (s) => /^\d{17,20}$/.test(String(s || "").trim());
+
+      async function logsGet() {
+        if (window.api?.giveawayGetLogsChannel)
+          return await window.api.giveawayGetLogsChannel();
+        return { ok: false, error: "not implemented" };
+      }
+      async function logsSet(channelId) {
+        if (window.api?.giveawaySetLogsChannel)
+          return await window.api.giveawaySetLogsChannel(channelId);
+        return { ok: false, error: "not implemented" };
+      }
+      async function logsRemove() {
+        if (window.api?.giveawayClearLogsChannel)
+          return await window.api.giveawayClearLogsChannel();
+        return { ok: false, error: "not implemented" };
+      }
+      function setLogsStatus(text, ok = false) {
+        const el = $("#logsChannelStatus");
+        if (!el) return;
+        el.textContent = text;
+        el.classList.toggle("dim", !ok);
+      }
+      async function loadLogsChannel() {
+        const res = await logsGet().catch(() => null);
+        if (res?.ok && res.channelId) {
+          $("#logsChannelId").value = res.channelId;
+          setLogsStatus(`Saved: ${res.channelId}`, true);
+        } else {
+          setLogsStatus("Not set", false);
+        }
+      }
+
+      async function fetchChannels() {
+        if (window.api?.giveawayListChannels)
+          return await window.api.giveawayListChannels();
+        if (window.api?.giveawayChannels)
+          return await window.api.giveawayChannels();
+        if (window.api?.getEmbedTargets) {
+          const r = await window.api.getEmbedTargets();
+          return { ok: !!r?.ok, channels: r?.channels || [] };
+        }
+        return { ok: false, channels: [] };
+      }
+      async function loadChannelsOnce() {
+        const select = $("#channel");
+        if (!select) return;
+        select.innerHTML = "<option disabled selected>Loading…</option>";
+        const res = await fetchChannels().catch(() => null);
+        select.innerHTML = "";
+        if (!res?.ok || !Array.isArray(res.channels) || !res.channels.length) {
+          const o = document.createElement("option");
+          o.textContent = "No text channels found";
+          o.disabled = true;
+          o.selected = true;
+          select.appendChild(o);
+          return false;
+        }
+        for (const ch of res.channels) {
+          const opt = document.createElement("option");
+          opt.value = ch.id;
+          opt.textContent = `# ${ch.name}`;
+          select.appendChild(opt);
+        }
+        return true;
+      }
+      async function loadChannels(initial = false) {
+        const ok = await loadChannelsOnce();
+        if (initial && !ok)
+          setTimeout(
+            () =>
+              loadChannelsOnce().then(
+                (a) => a && toast("Channels refreshed.", "ok")
+              ),
+            1200
+          );
+      }
+
+      async function fetchRoles() {
+        if (window.api?.listRoles) return await window.api.listRoles();
+        return { ok: false, roles: [] };
+      }
+      function renderRolesBox(roles) {
+        const box = $("#rolesBox");
+        if (!box) return;
+        box.innerHTML = "";
+        if (!roles?.length) {
+          const empty = document.createElement("div");
+          empty.className = "dim";
+          empty.textContent = "No roles available";
+          box.appendChild(empty);
+          return;
+        }
+        const grid = document.createElement("div");
+        grid.style.display = "grid";
+        grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(180px, 1fr))";
+        grid.style.gap = "8px";
+        for (const r of roles) {
+          const id = String(r.id);
+          const row = document.createElement("label");
+          row.style.display = "flex";
+          row.style.alignItems = "center";
+          row.style.gap = "8px";
+          row.style.padding = "6px 8px";
+          row.style.border = "1px solid var(--border)";
+          row.style.borderRadius = "10px";
+          row.style.background = "rgba(255,255,255,0.04)";
+          row.style.cursor = "pointer";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.className = "role-check";
+          cb.value = id;
+          const span = document.createElement("span");
+          span.textContent = r.name || id;
+          row.appendChild(cb);
+          row.appendChild(span);
+          grid.appendChild(row);
+        }
+        box.appendChild(grid);
+      }
+      async function loadRolesOnce() {
+        const res = await fetchRoles().catch(() => null);
+        if (!res?.ok || !Array.isArray(res.roles)) {
+          renderRolesBox([]);
+          return false;
+        }
+        renderRolesBox(res.roles);
+        return !!res.roles.length;
+      }
+      async function loadRoles(initial = false) {
+        const ok = await loadRolesOnce();
+        if (initial && !ok)
+          setTimeout(
+            () =>
+              loadRolesOnce().then((a) => a && toast("Roles refreshed.", "ok")),
+            1200
+          );
+      }
+
+      function cleanUrl(s) {
+        const u = String(s || "").trim();
+        if (!u) return "";
+        if (/^https?:\/\//i.test(u) || /^data:image\//i.test(u)) return u;
+        return "";
+      }
+      function setBadge(el, state) {
+        el.textContent = state;
+        el.style.borderColor =
+          state === "OK"
+            ? "rgba(34,197,94,.45)"
+            : state === "Invalid"
+            ? "rgba(239,68,68,.45)"
+            : "var(--border)";
+        el.style.color =
+          state === "OK"
+            ? "#86efac"
+            : state === "Invalid"
+            ? "#fca5a5"
+            : "var(--muted)";
+      }
+      function wirePreview(inputEl, imgEl, badgeEl) {
+        const apply = () => {
+          const u = cleanUrl(inputEl.value);
+          if (!u) {
+            imgEl.style.display = "none";
+            imgEl.removeAttribute("src");
+            setBadge(badgeEl, "Empty");
+            return;
+          }
+          imgEl.onload = () => {
+            imgEl.style.display = "block";
+            setBadge(badgeEl, "OK");
+          };
+          imgEl.onerror = () => {
+            imgEl.style.display = "none";
+            imgEl.removeAttribute("src");
+            setBadge(badgeEl, "Invalid");
+          };
+          imgEl.src = u;
+        };
+        inputEl.addEventListener("input", apply);
+        apply();
+      }
+      async function pasteInto(input) {
+        try {
+          const t = await navigator.clipboard.readText();
+          input.value = t.trim();
+          input.dispatchEvent(new Event("input"));
+        } catch {
+          toast("Clipboard read blocked", "warn");
+        }
+      }
+
+      let countdownTimer = null;
+      function fmtTimeLeft(endsAt) {
+        const ms = Math.max(0, new Date(endsAt).getTime() - Date.now());
+        const s = Math.floor(ms / 1000);
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const ss = s % 60;
+        if (d > 0) return `${d}d ${h}h ${m}m`;
+        if (h > 0) return `${h}h ${m}m ${ss}s`;
+        return `${m}m ${ss}s`;
+      }
+      function startCountdownTick() {
+        if (countdownTimer) clearInterval(countdownTimer);
+        const tick = () => {
+          $$(".timeleft").forEach((el) => {
+            const ends = el.getAttribute("data-ends");
+            el.textContent = fmtTimeLeft(ends);
+          });
+        };
+        tick();
+        countdownTimer = setInterval(tick, 1000);
+      }
+      function escapeHtml(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function renderActive(items) {
+        const wrap = $("#active-list");
+        if (!wrap) return;
+        wrap.innerHTML = "";
+        wrap.classList.remove("empty");
+        if (!items?.length) {
+          wrap.classList.add("empty");
+          wrap.textContent = "No active giveaways (UI preview).";
+          return;
+        }
+        for (const gw of items) {
+          const card = document.createElement("div");
+          card.className = "gw-item";
+          const title = document.createElement("div");
+          title.className = "gw-title";
+          title.innerHTML = `🎁 <b>${escapeHtml(
+            gw.title || "Giveaway"
+          )}</b> · <span class="small">ID:</span> <code>${gw.id}</code>`;
+          const meta = document.createElement("div");
+          meta.className = "gw-meta";
+          meta.innerHTML = `
+            <span class="pill">Winners: <b>${gw.winners || 1}</b></span>
+            <span class="pill">Ends: <b>${new Date(
+              gw.endsAt
+            ).toLocaleString()}</b></span>
+            <span class="pill">Time left: <b class="timeleft" data-ends="${
+              gw.endsAt
+            }">—</b></span>
+          `;
+          const actions = document.createElement("div");
+          actions.className = "gw-actions";
+          actions.innerHTML = `
+            <button class="btn xs" data-act="copy" data-id="${
+              gw.id
+            }" data-url="${gw.url || ""}">Copy Link</button>
+            <button class="btn xs" data-act="reroll" data-id="${
+              gw.id
+            }">Reroll</button>
+            <button class="btn xs danger" data-act="end" data-id="${
+              gw.id
+            }">End</button>
+          `;
+          card.appendChild(title);
+          if (gw.description) {
+            const d = document.createElement("div");
+            d.className = "gw-desc";
+            d.textContent = gw.description;
+            card.appendChild(d);
+          }
+          card.appendChild(meta);
+          card.appendChild(actions);
+          wrap.appendChild(card);
+        }
+        startCountdownTick();
+      }
+      async function loadActive() {
+        const res = await callOrToast("giveawayList");
+        if (res?.ok) {
+          const active = (res.items || []).filter((x) => x.status === "active");
+          renderActive(active);
+        }
+      }
+
+      function resolveDurationMinutes() {
+        const amount = Math.max(1, parseInt($("#duration").value || "60", 10));
+        const unit = $("#durationUnit").value;
+        if (unit === "hours") return amount * 60;
+        if (unit === "days") return amount * 1440;
+        return amount;
+      }
+      function collectSelectedRoleIds() {
+        return $$(".role-check")
+          .filter((cb) => cb.checked)
+          .map((cb) => cb.value)
+          .filter(isSnowflake);
+      }
+
+      $("#btn-start")?.addEventListener("click", async () => {
+        const logsId = ($("#logsChannelId").value || "").trim();
+        const payload = {
+          channelId: $("#channel").value,
+          title: $("#title").value,
+          description: $("#desc").value,
+          winners: Math.max(1, parseInt($("#winners").value || "1", 10)),
+          durationMin: resolveDurationMinutes(),
+          mention: {
+            everyone: !!$("#pingEveryone")?.checked,
+            roles: collectSelectedRoleIds(),
+            users: [],
+          },
+          thumbUrl: cleanUrl($("#thumbUrl").value),
+          imageUrl: cleanUrl($("#imageUrl").value),
+        };
+
+        const res = await callOrToast("giveawayStart", payload);
+        if (res?.ok) {
+          $("#editId").value = res.giveaway?.id || "";
+          toast("Giveaway started", "ok");
+          await loadActive();
+        } else if (res?.error) {
+          toast(res.error, "error");
+        }
+      });
+
+      $("#btn-save")?.addEventListener("click", async () => {
+        const payload = {
+          id: $("#editId").value.trim(),
+          title: $("#title").value,
+          description: $("#desc").value,
+          winners: Math.max(1, parseInt($("#winners").value || "1", 10)),
+          thumbUrl: cleanUrl($("#thumbUrl").value),
+          imageUrl: cleanUrl($("#imageUrl").value),
+        };
+        const res = await callOrToast("giveawayEdit", payload);
+        if (res?.ok) {
+          toast("Saved", "ok");
+          await loadActive();
+        } else if (res?.error) toast(res.error, "error");
+      });
+
+      $("#btn-end")?.addEventListener("click", async () => {
+        const res = await callOrToast("giveawayEnd", {
+          id: $("#editId").value.trim(),
+        });
+        if (res?.ok) {
+          toast("Giveaway ended", "ok");
+          await loadActive();
+        } else if (res?.error) toast(res.error, "error");
+      });
+
+      $("#btn-copy-id")?.addEventListener("click", async () => {
+        const s = $("#editId").value.trim();
+        try {
+          await navigator.clipboard.writeText(s);
+          toast("Copied!", "ok");
+        } catch {
+          toast("Copy failed", "error");
+        }
+      });
+
+      const rrInput = $("#rerollCount");
+      $("#rr-inc")?.addEventListener(
+        "click",
+        () =>
+          (rrInput.value = Math.max(1, parseInt(rrInput.value || "1", 10)) + 1)
+      );
+      $("#rr-dec")?.addEventListener(
+        "click",
+        () =>
+          (rrInput.value = Math.max(1, parseInt(rrInput.value || "1", 10) - 1))
+      );
+      $("#btn-reroll")?.addEventListener("click", async () => {
+        const id = $("#editId").value.trim();
+        const count = Math.max(1, parseInt(rrInput.value || "1", 10));
+        if (!id) return toast("Enter a Giveaway ID first", "warn");
+        const res = await callOrToast("giveawayReroll", { id, count });
+        if (res?.ok) toast("Reroll executed", "ok");
+        else toast(res?.error || "Reroll failed", "error");
+      });
+
+      const winInput = $("#winners");
+      $("#win-inc")?.addEventListener(
+        "click",
+        () =>
+          (winInput.value =
+            Math.max(1, parseInt(winInput.value || "1", 10)) + 1)
+      );
+      $("#win-dec")?.addEventListener(
+        "click",
+        () =>
+          (winInput.value = Math.max(
+            1,
+            parseInt(winInput.value || "1", 10) - 1
+          ))
+      );
+      const durInput = $("#duration");
+      $("#dur-inc")?.addEventListener(
+        "click",
+        () =>
+          (durInput.value =
+            Math.max(1, parseInt(durInput.value || "60", 10)) + 1)
+      );
+      $("#dur-dec")?.addEventListener(
+        "click",
+        () =>
+          (durInput.value = Math.max(
+            1,
+            parseInt(durInput.value || "60", 10) - 1
+          ))
+      );
+
+      $("#active-list")?.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button[data-act]");
+        if (!btn) return;
+        const act = btn.getAttribute("data-act");
+        const id = btn.getAttribute("data-id") || "";
+        if (!id) return;
+        try {
+          if (act === "end") {
+            const res = await callOrToast("giveawayEnd", { id });
+            if (res?.ok) {
+              toast("Giveaway ended", "ok");
+              await loadActive();
+            } else toast(res?.error || "End failed", "error");
+          } else if (act === "reroll") {
+            const res = await callOrToast("giveawayReroll", { id, count: 1 });
+            if (res?.ok) toast("Reroll executed", "ok");
+            else toast(res?.error || "Reroll failed", "error");
+          } else if (act === "copy") {
+            const url = btn.getAttribute("data-url") || "";
+            if (!url) return toast("No link saved for this giveaway", "warn");
+            await navigator.clipboard.writeText(url);
+            toast("Link copied!", "ok");
+          }
+        } catch (err) {
+          console.error(err);
+          toast("Action failed", "error");
+        }
+      });
+
+      $("#btn-reload")?.addEventListener("click", async () => {
+        await Promise.all([
+          loadChannels(false),
+          loadRoles(false),
+          loadActive(),
+          loadLogsChannel(),
+        ]);
+        toast("Refreshed", "ok");
+      });
+
+      wirePreview($("#thumbUrl"), $("#thumbPreview"), $("#thumbBadge"));
+      wirePreview($("#imageUrl"), $("#imagePreview"), $("#imageBadge"));
+      $("#btn-thumb-paste")?.addEventListener("click", () =>
+        pasteInto($("#thumbUrl"))
+      );
+      $("#btn-image-paste")?.addEventListener("click", () =>
+        pasteInto($("#imageUrl"))
+      );
+      $("#btn-thumb-clear")?.addEventListener("click", () => {
+        $("#thumbUrl").value = "";
+        $("#thumbUrl").dispatchEvent(new Event("input"));
+      });
+      $("#btn-image-clear")?.addEventListener("click", () => {
+        $("#imageUrl").value = "";
+        $("#imageUrl").dispatchEvent(new Event("input"));
+      });
+
+      $("#btn-logs-paste")?.addEventListener("click", () =>
+        pasteInto($("#logsChannelId"))
+      );
+      $("#btn-logs-save")?.addEventListener("click", async () => {
+        const id = ($("#logsChannelId").value || "").trim();
+        if (!isSnowflake(id)) return toast("Enter a valid channel ID", "warn");
+        const r = await logsSet(id);
+        if (r?.ok) {
+          setLogsStatus(`Saved: ${id}`, true);
+          toast("Logs channel saved", "ok");
+        } else toast(r?.error || "Save failed", "error");
+      });
+      $("#btn-logs-remove")?.addEventListener("click", async () => {
+        const r = await logsRemove();
+        if (r?.ok) {
+          $("#logsChannelId").value = "";
+          setLogsStatus("Not set");
+          toast("Logs channel removed", "ok");
+        } else toast(r?.error || "Remove failed", "error");
+      });
+
+      (async () => {
+        await Promise.all([
+          loadLogsChannel(),
+          loadChannels(true),
+          loadRoles(true),
+          loadActive(),
+        ]);
+      })();
+    </script>
+  </body>
+</html>

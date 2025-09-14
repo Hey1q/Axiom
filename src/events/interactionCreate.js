@@ -1,5 +1,6 @@
 const { Events, MessageFlags } = require("discord.js");
 const { loadConfig } = require("../functions/setupHandler");
+const { addEntry } = require("../storage/giveaways");
 
 const cooldowns = new Map();
 
@@ -47,6 +48,28 @@ module.exports = {
 
     if (interaction.isButton()) {
       try {
+        if (interaction.customId?.startsWith("gw:enter:")) {
+          const giveawayId = interaction.customId.split(":")[2];
+          if (!giveawayId) {
+            await safeReply(interaction, "⚠️ Invalid giveaway.");
+            return;
+          }
+          const ok = addEntry(giveawayId, interaction.user.id);
+          if (ok) {
+            await safeReply(
+              interaction,
+              `🎉 You're in! Joined **${giveawayId}** successfully.`
+            );
+          } else {
+            await safeReply(
+              interaction,
+              `ℹ️ You have already joined this giveaway.`
+            );
+          }
+          return;
+        }
+
+        // demo/test buttons
         const map = {
           "test:primary": "Primary",
           "test:secondary": "Secondary",
@@ -89,6 +112,7 @@ module.exports = {
       !interaction.isContextMenuCommand?.()
     )
       return;
+
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command || typeof command.execute !== "function") {
       return safeReply(

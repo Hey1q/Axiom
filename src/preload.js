@@ -94,12 +94,21 @@ contextBridge.exposeInMainWorld("api", {
   ticketsSetPaths: (paths) => invoke("tickets:setPaths", paths),
 
   ticketsEnsureDefaultLogs: () => invoke("tickets:ensureDefaultLogs"),
-
   ticketsReadLogs: (query) => invoke("tickets:readLogs", query),
-
   ticketsClearLogs: () => invoke("tickets:clearLogs"),
-
   ticketsOpenLogsFolder: (which) => invoke("tickets:openLogsFolder", which),
-
   ticketsPurgeChannel: (opts) => invoke("tickets:purge", opts),
+
+  giveawayListChannels: () => invoke("giveaway:listChannels"),
+  giveawayChannels: () => invoke("giveaway:channels"),
+  giveawayList: () => invoke("giveaway:list"),
+  giveawayStart: (payload) => invoke("giveaway:start", payload),
+  giveawayEdit: (payload) => invoke("giveaway:edit", payload),
+  giveawayEnd: (payload) => invoke("giveaway:end", payload),
+  giveawayRemove: (id) => invoke("giveaway:remove", id),
+  giveawayReroll: (payload) => invoke("giveaway:reroll", payload),
+  giveawayLogStart: (payload) => invoke("giveaway:logStart", payload),
+  giveawayGetLogsChannel: () => invoke("giveaway:getLogsChannel"),
+  giveawaySetLogsChannel: (id) => invoke("giveaway:setLogsChannel", id),
+  giveawayClearLogsChannel: () => invoke("giveaway:clearLogsChannel"),
 });
