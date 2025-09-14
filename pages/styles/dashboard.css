@@ -313,8 +313,6 @@ body {
   transform: rotateY(0deg) scale(1);
   opacity: 1;
   z-index: 200;
-  box-shadow: 0 0 30px 20px rgba(0, 255, 255, 0.4),
-    0 0 10px 3px rgba(0, 255, 255, 0.2);
 }
 
 .card-label {
@@ -334,34 +332,85 @@ body {
 }
 
 .gradient1 {
-  background: linear-gradient(135deg, #00cfff, #0040ff);
+  background: linear-gradient(135deg, #0ea5e9, #082f49);
 }
 .gradient2 {
-  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  background: linear-gradient(135deg, #be123c, #3f0d12);
 }
 .gradient3 {
-  background: linear-gradient(135deg, #00cfff, #0072ff);
+  background: linear-gradient(135deg, #16a34a, #052e1c);
 }
 .gradient4 {
-  background: linear-gradient(135deg, #0f172a, #1e293b);
+  background: linear-gradient(135deg, #7c3aed, #1e1b4b);
 }
 .gradient5 {
-  background: linear-gradient(135deg, #e1eec3, #f05053);
+  background: linear-gradient(135deg, #d97706, #3b1d0a);
 }
 .gradient6 {
-  background: linear-gradient(135deg, #43cea2, #185a9d);
+  background: linear-gradient(135deg, #0d9488, #052b2b);
 }
 .gradient7 {
-  background: linear-gradient(135deg, #ff512f, #dd2476);
+  background: linear-gradient(135deg, #dc2626, #2b0b0b);
 }
 .gradient8 {
-  background: linear-gradient(135deg, #4568dc, #b06ab3);
+  background: linear-gradient(135deg, #2563eb, #0b1220);
 }
 .gradient9 {
-  background: linear-gradient(135deg, #ec6f66, #f3a183);
+  background: linear-gradient(135deg, #22c55e, #0b2615);
 }
 .gradient10 {
-  background: linear-gradient(135deg, #00b09b, #96c93d);
+  background: linear-gradient(135deg, #06b6d4, #071d2a);
+}
+
+.gradient1:hover,
+.card.gradient1.active {
+  box-shadow: 0 0 40px 12px rgba(14, 165, 233, 0.5),
+    0 0 20px 6px rgba(8, 47, 73, 0.45);
+}
+.gradient2:hover,
+.card.gradient2.active {
+  box-shadow: 0 0 40px 12px rgba(190, 18, 60, 0.5),
+    0 0 20px 6px rgba(63, 13, 18, 0.45);
+}
+.gradient3:hover,
+.card.gradient3.active {
+  box-shadow: 0 0 40px 12px rgba(22, 163, 74, 0.5),
+    0 0 20px 6px rgba(5, 46, 28, 0.45);
+}
+.gradient4:hover,
+.card.gradient4.active {
+  box-shadow: 0 0 40px 12px rgba(124, 58, 237, 0.5),
+    0 0 20px 6px rgba(30, 27, 75, 0.45);
+}
+.gradient5:hover,
+.card.gradient5.active {
+  box-shadow: 0 0 40px 12px rgba(217, 119, 6, 0.54),
+    0 0 20px 6px rgba(59, 29, 10, 0.46);
+}
+.gradient6:hover,
+.card.gradient6.active {
+  box-shadow: 0 0 40px 12px rgba(13, 148, 136, 0.52),
+    0 0 20px 6px rgba(5, 43, 43, 0.46);
+}
+.gradient7:hover,
+.card.gradient7.active {
+  box-shadow: 0 0 40px 12px rgba(220, 38, 38, 0.52),
+    0 0 20px 6px rgba(43, 11, 11, 0.46);
+}
+.gradient8:hover,
+.card.gradient8.active {
+  box-shadow: 0 0 40px 12px rgba(37, 99, 235, 0.5),
+    0 0 20px 6px rgba(11, 18, 32, 0.46);
+}
+.gradient9:hover,
+.card.gradient9.active {
+  box-shadow: 0 0 40px 12px rgba(34, 197, 94, 0.5),
+    0 0 20px 6px rgba(11, 38, 21, 0.46);
+}
+.gradient10:hover,
+.card.gradient10.active {
+  box-shadow: 0 0 40px 12px rgba(6, 182, 212, 0.5),
+    0 0 20px 6px rgba(7, 29, 42, 0.46);
 }
 
 @media (max-height: 600px) {
@@ -381,36 +430,4 @@ body {
     min-width: calc(50vw - 130px);
     max-width: calc(50vw - 130px);
   }
-}
-
-.card.gradient1:hover {
-  box-shadow: 0 0 40px 10px rgba(0, 212, 255, 0.4),
-    0 0 10px 4px rgba(0, 212, 255, 0.3), inset 0 0 10px rgba(0, 212, 255, 0.15);
-  transform: scale(1.02);
-  transition: 0.3s ease;
-}
-.card.gradient2:hover {
-  box-shadow: 0 0 40px 10px rgba(255, 100, 100, 0.3),
-    0 0 10px 4px rgba(255, 50, 50, 0.3),
-    inset 0 0 10px rgba(255, 100, 100, 0.15);
-  transform: scale(1.02);
-  transition: 0.3s ease;
-}
-.card.gradient3:hover {
-  box-shadow: 0 0 40px 10px rgba(0, 191, 255, 0.35),
-    0 0 10px 4px rgba(0, 191, 255, 0.25), inset 0 0 10px rgba(0, 191, 255, 0.1);
-  transform: scale(1.02);
-  transition: 0.3s ease;
-}
-.card.gradient4:hover {
-  box-shadow: 0 0 40px 10px rgba(0, 191, 255, 0.4),
-    0 0 10px 4px rgba(0, 191, 255, 0.3), inset 0 0 10px rgba(0, 191, 255, 0.15);
-  transform: scale(1.02);
-  transition: 0.3s ease;
-}
-.card#config-editor-card:hover {
-  box-shadow: 0 0 40px 12px rgba(240, 80, 83, 0.5),
-    0 0 15px 6px rgba(225, 238, 195, 0.3), inset 0 0 12px rgba(240, 80, 83, 0.2);
-  transform: scale(1.03);
-  transition: 0.3s ease;
 }
