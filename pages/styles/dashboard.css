@@ -11,8 +11,7 @@ body {
 }
 
 .angled-header {
-  clip-path: polygon(0 0, 8px 100%, calc(100% - 8px) 100%, 100% 0);
-  background: linear-gradient(to right, #000428, #004e92);
+  background: linear-gradient(90deg, #0f172a, #1e3a8a);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -23,21 +22,23 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 14px 32px;
+  padding: 8px 20px;
+  background: linear-gradient(90deg, #0f172a, #1e3a8a);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .header-center {
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
 }
 
 .header-center a {
-  color: #00fff7;
+  color: #38bdf8;
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  transition: all 0.2s ease-in-out;
 }
 
 .header-center a:hover {
@@ -45,10 +46,10 @@ body {
 }
 
 .user-info {
-  color: #ccc;
-  font-size: 0.9rem;
-  padding-left: 20px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 0.85rem;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .icon-button {
