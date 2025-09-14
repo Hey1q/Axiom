@@ -23,20 +23,43 @@
   <body>
     <div class="angled-header">
       <header class="top-header">
-        <div class="header-center">
-          <a href="index.html" class="nav-link" id="nav-home">
-            <img src="../src/assets/home.png" alt="Home" class="icon-inline" />
-            <span>Home</span>
-          </a>
-          <span class="user-info">Welcome to Axiom Dashboard</span>
+        <div class="header-inner column">
+          <div class="header-center">
+            <a href="index.html" class="nav-link" id="nav-home">
+              <img
+                src="../src/assets/home.png"
+                alt="Home"
+                class="icon-inline"
+              />
+              <span>Home</span>
+            </a>
+            <span class="user-info">Welcome to Axiom Dashboard</span>
+          </div>
+
+          <div class="header-toolbar">
+            <div class="toolbar-surface">
+              <button
+                id="start-bot"
+                class="pill-btn sm btn-start"
+                aria-label="Start bot"
+              >
+                <span class="btn-emoji">🚀</span
+                ><span class="btn-text">Start Bot</span>
+              </button>
+              <span class="toolbar-sep" aria-hidden="true"></span>
+              <button
+                id="stop-bot"
+                class="pill-btn sm btn-stop"
+                aria-label="Stop bot"
+              >
+                <span class="btn-emoji">🛑</span
+                ><span class="btn-text">Stop Bot</span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
     </div>
-
-    <section class="actions">
-      <button id="start-bot">Start Bot</button>
-      <button id="stop-bot">Stop Bot</button>
-    </section>
 
     <section class="owner-only" id="owner-panel">
       <div class="card-slider-wrapper">
@@ -118,42 +141,106 @@
         }
       }
 
-      document.addEventListener("DOMContentLoaded", function () {
-        var hasApi = typeof window.api !== "undefined" && window.api !== null;
+      function setButtonState(button, emoji, text, disabled = false) {
+        const emojiSpan = button.querySelector(".btn-emoji");
+        const textSpan = button.querySelector(".btn-text");
+        if (emojiSpan) emojiSpan.textContent = emoji;
+        if (textSpan) textSpan.textContent = text;
+        button.disabled = disabled;
+      }
 
-        var startBtn = document.getElementById("start-bot");
-        var stopBtn = document.getElementById("stop-bot");
+      document.addEventListener("DOMContentLoaded", function () {
+        const hasApi = typeof window.api !== "undefined" && window.api !== null;
+
+        const startBtn = document.getElementById("start-bot");
+        const stopBtn = document.getElementById("stop-bot");
+
+        const onStarted =
+          typeof window.api?.onBotStarted === "function"
+            ? window.api.onBotStarted
+            : null;
+        const onStopped =
+          typeof window.api?.onBotStopped === "function"
+            ? window.api.onBotStopped
+            : null;
 
         startBtn.addEventListener("click", function () {
+          setButtonState(startBtn, "⏳", "Starting…", true);
+          stopBtn.disabled = true;
+          safeNotify("help", "Starting…", "The bot is starting up.");
+
           if (!hasApi || typeof window.api.startBot !== "function") {
             safeNotify(
               "fail",
               "Unavailable",
               "API bridge not available in this build."
             );
+            setButtonState(startBtn, "🚀", "Start Bot", false);
+            stopBtn.disabled = false;
             return;
           }
-          window.api.startBot();
+
+          try {
+            window.api.startBot();
+          } catch (e) {
+            console.error(e);
+            safeNotify("fail", "Start failed", "Could not start the bot.");
+            setButtonState(startBtn, "🚀", "Start Bot", false);
+            stopBtn.disabled = false;
+            return;
+          }
+
+          const done = () => {
+            setButtonState(startBtn, "🚀", "Start Bot", false);
+            stopBtn.disabled = false;
+            safeNotify("success", "Started", "The bot is now running.");
+          };
+
+          if (onStarted) onStarted(done);
+          else setTimeout(done, 1200);
         });
 
         stopBtn.addEventListener("click", function () {
+          setButtonState(stopBtn, "⏳", "Stopping…", true);
+          startBtn.disabled = true;
+          safeNotify("warning", "Stopping…", "The bot is stopping.");
+
           if (!hasApi || typeof window.api.stopBot !== "function") {
             safeNotify(
               "fail",
               "Unavailable",
               "API bridge not available in this build."
             );
+            setButtonState(stopBtn, "🛑", "Stop Bot", false);
+            startBtn.disabled = false;
             return;
           }
-          window.api.stopBot();
+
+          try {
+            window.api.stopBot();
+          } catch (e) {
+            console.error(e);
+            safeNotify("fail", "Stop failed", "Could not stop the bot.");
+            setButtonState(stopBtn, "🛑", "Stop Bot", false);
+            startBtn.disabled = false;
+            return;
+          }
+
+          const done = () => {
+            setButtonState(stopBtn, "🛑", "Stop Bot", false);
+            startBtn.disabled = false;
+            safeNotify("success", "Stopped", "The bot has been stopped.");
+          };
+
+          if (onStopped) onStopped(done);
+          else setTimeout(done, 1200);
         });
 
         document
           .getElementById("channel-registry-card")
           .addEventListener("click", function () {
-            window.api.openWindow("channels.html");
+            window.api?.openWindow?.("channels.html");
           });
-
         document
           .getElementById("giveaway-gate-card")
           .addEventListener("click", function () {
@@ -175,32 +262,32 @@
             window.location.href = "configeditor.html";
           });
 
-        var cardSlider = document.getElementById("card-slider");
+        const cardSlider = document.getElementById("card-slider");
         cardSlider.addEventListener("scroll", updateCardTransforms);
         window.addEventListener("resize", updateCardTransforms);
         updateCardTransforms();
 
-        var firstActualCard = cardSlider.querySelector(
+        const firstActualCard = cardSlider.querySelector(
           ".card:not(.ghost-card):first-of-type"
         );
         if (firstActualCard) {
           firstActualCard.classList.add("active");
-          var sliderCenter = cardSlider.offsetWidth / 2;
-          var cardCenter =
+          const sliderCenter = cardSlider.offsetWidth / 2;
+          const cardCenter =
             firstActualCard.offsetLeft + firstActualCard.offsetWidth / 2;
-          var scrollTo = cardCenter - sliderCenter;
+          const scrollTo = cardCenter - sliderCenter;
           cardSlider.scrollTo({ left: scrollTo, behavior: "auto" });
         }
       });
 
       function updateCardTransforms() {
-        var slider = document.getElementById("card-slider");
-        var cards = slider.querySelectorAll(".card");
-        var sliderRect = slider.getBoundingClientRect();
-        var centerX = sliderRect.left + sliderRect.width / 2;
+        const slider = document.getElementById("card-slider");
+        const cards = slider.querySelectorAll(".card");
+        const sliderRect = slider.getBoundingClientRect();
+        const centerX = sliderRect.left + sliderRect.width / 2;
 
-        var closestCard = null;
-        var closestDistance = Infinity;
+        let closestCard = null;
+        let closestDistance = Infinity;
 
         cards.forEach(function (card) {
           if (card.classList.contains("ghost-card")) {
@@ -211,19 +298,19 @@
             return;
           }
 
-          var cardRect = card.getBoundingClientRect();
-          var cardCenter = cardRect.left + cardRect.width / 2;
-          var offset = (centerX - cardCenter) / sliderRect.width;
+          const cardRect = card.getBoundingClientRect();
+          const cardCenter = cardRect.left + cardRect.width / 2;
+          const offset = (centerX - cardCenter) / sliderRect.width;
 
-          var distance = Math.abs(centerX - cardCenter);
+          const distance = Math.abs(centerX - cardCenter);
           if (distance < closestDistance) {
             closestDistance = distance;
             closestCard = card;
           }
 
           if (card !== closestCard) {
-            var rotateY = offset * 30;
-            var scale = 1 - Math.min(Math.abs(offset) * 0.4, 0.4);
+            const rotateY = offset * 30;
+            const scale = 1 - Math.min(Math.abs(offset) * 0.4, 0.4);
             card.style.transform =
               "rotateY(" + rotateY + "deg) scale(" + scale + ")";
             card.style.opacity = String(1 - Math.abs(offset) * 0.6);
@@ -246,22 +333,23 @@
       }
 
       function shiftCard(direction) {
-        var slider = document.getElementById("card-slider");
-        var allCards = Array.from(slider.querySelectorAll(".card"));
-        var actualCards = allCards.filter(function (c) {
-          return !c.classList.contains("ghost-card");
-        });
-        var activeCard = slider.querySelector(".card.active");
+        const slider = document.getElementById("card-slider");
+        const allCards = Array.from(slider.querySelectorAll(".card"));
+        const actualCards = allCards.filter(
+          (c) => !c.classList.contains("ghost-card")
+        );
+        const activeCard = slider.querySelector(".card.active");
 
-        var currentIndex = actualCards.indexOf(activeCard);
+        let currentIndex = actualCards.indexOf(activeCard);
         if (currentIndex === -1) currentIndex = 0;
 
-        var newIndex = currentIndex + direction;
-        newIndex = Math.max(0, Math.min(newIndex, actualCards.length - 1));
-
-        var targetCard = actualCards[newIndex];
-        var cardCenter = targetCard.offsetLeft + targetCard.offsetWidth / 2;
-        var scrollTo = cardCenter - slider.offsetWidth / 2;
+        const newIndex = Math.max(
+          0,
+          Math.min(currentIndex + direction, actualCards.length - 1)
+        );
+        const targetCard = actualCards[newIndex];
+        const cardCenter = targetCard.offsetLeft + targetCard.offsetWidth / 2;
+        const scrollTo = cardCenter - slider.offsetWidth / 2;
 
         slider.scrollTo({ left: scrollTo, behavior: "smooth" });
       }

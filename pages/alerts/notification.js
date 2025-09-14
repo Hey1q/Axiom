@@ -1,6 +1,7 @@
 function showNotification(type, title, message) {
-  const container =
-    document.getElementById("alert-container") || createAlertContainer();
+  const container = document.getElementById("alert-container");
+  if (!container) return;
+
   const notif = document.createElement("div");
   notif.className = `notification ${type}`;
   notif.innerHTML = `
@@ -9,7 +10,14 @@ function showNotification(type, title, message) {
       <h4>${title}</h4>
       <p>${message}</p>
     </div>
+    <div class="close" aria-label="Close">×</div>
   `;
+
+  notif.querySelector(".close").addEventListener("click", () => {
+    notif.style.opacity = "0";
+    setTimeout(() => notif.remove(), 300);
+  });
+
   container.appendChild(notif);
 
   setTimeout(() => {
