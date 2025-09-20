@@ -6,6 +6,14 @@ https://vimeo.com/1110859324
 
 ## Support
 
+### Wise bank invite:
+https://wise.com/invite/ihpc/andreask2980
+
+### Aircash invite:
+https://link.aircash.eu/Referral/Index?referralCode=andreask25
+
+
+
 If you like this project and want to support me ❤️, you can donate here:
 ### Paypal
 <img width="500" height="500" alt="qrcode" src="https://github.com/user-attachments/assets/c83c33f3-2422-4114-ac0c-99a73357f9be" />
