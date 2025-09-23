@@ -19,4 +19,4 @@ module.exports = (client) => {
     console.log(`✅ Loaded Event: ${event.name}`);
   }
   console.log("--- All events loaded successfully! ---");
-}
+};

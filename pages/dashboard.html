@@ -118,7 +118,14 @@
             <div class="card-label">Config Editor</div>
           </div>
 
-          <div class="card gradient6">System Info 4</div>
+          <div class="card gradient6" id="events-card">
+            <img
+              src="../src/assets/events.png"
+              alt="Axiom • Events"
+              class="icon-img-large"
+            />
+            <div class="card-label">Axiom • Events</div>
+          </div>
           <div class="card gradient7">System Info 5</div>
           <div class="card gradient8">System Info 6</div>
           <div class="card gradient9">System Info 7</div>
@@ -260,6 +267,11 @@
           .getElementById("config-editor-card")
           .addEventListener("click", function () {
             window.location.href = "configeditor.html";
+          });
+        document
+          .getElementById("events-card")
+          .addEventListener("click", function () {
+            window.location.href = "message-router.html";
           });
 
         const cardSlider = document.getElementById("card-slider");

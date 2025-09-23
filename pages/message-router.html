@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Axiom — Events</title>
+
+    <link rel="stylesheet" href="styles/global.css" />
+    <link rel="stylesheet" href="styles/message-router.css" />
+    <link rel="stylesheet" href="alerts/notification.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <a class="nav-home" href="dashboard.html" aria-label="Back to Dashboard">
+        <img src="../src/assets/home.png" alt="Home" />
+        <span>Dashboard</span>
+      </a>
+
+      <div class="header-title">
+        <img src="../src/assets/events.png" alt="Axiom • Events" />
+        <h1>Axiom • Events</h1>
+      </div>
+
+      <div class="header-actions">
+        <button
+          class="btn ok"
+          id="saveAllBtn"
+          title="Saves all IDs on this page"
+        >
+          💾 Save All IDs
+        </button>
+        <button
+          class="btn bad"
+          id="removeAllBtn"
+          title="Removes all IDs on this page"
+        >
+          🗑️ Removes All IDs
+        </button>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="grid">
+        <div class="card" id="card-new">
+          <div class="card-head">
+            <h2>New Messages</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveNewBtn">💾 Save</button>
+              <button class="btn" id="pasteNewBtn">📋 Paste</button>
+              <button class="btn bad" id="clearNewBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel watched for new messages.</p>
+          <div class="row">
+            <input id="newInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="newList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-edit">
+          <div class="card-head">
+            <h2>Message Edits</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveEditBtn">💾 Save</button>
+              <button class="btn" id="pasteEditBtn">📋 Paste</button>
+              <button class="btn bad" id="clearEditBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel watched for message edits.</p>
+          <div class="row">
+            <input id="editInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="editList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-del">
+          <div class="card-head">
+            <h2>Message Deletes</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveDelBtn">💾 Save</button>
+              <button class="btn" id="pasteDelBtn">📋 Paste</button>
+              <button class="btn bad" id="clearDelBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel watched for message deletions.</p>
+          <div class="row">
+            <input id="delInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="delList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-rep">
+          <div class="card-head">
+            <h2>Message Replies</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveRepBtn">💾 Save</button>
+              <button class="btn" id="pasteRepBtn">📋 Paste</button>
+              <button class="btn bad" id="clearRepBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where replies will be logged.</p>
+          <div class="row">
+            <input id="repInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="repList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-create">
+          <div class="card-head">
+            <h2>Channel Creates</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveCreateBtn">💾 Save</button>
+              <button class="btn" id="pasteCreateBtn">📋 Paste</button>
+              <button class="btn bad" id="clearCreateBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where channel creations will be logged.</p>
+          <div class="row">
+            <input id="createInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="createList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-chdel">
+          <div class="card-head">
+            <h2>Channel Deletes</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveChDelBtn">💾 Save</button>
+              <button class="btn" id="pasteChDelBtn">📋 Paste</button>
+              <button class="btn bad" id="clearChDelBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where channel deletions will be logged.</p>
+          <div class="row">
+            <input id="chdelInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="chdelList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-update">
+          <div class="card-head">
+            <h2>Channel Updates</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveUpdateBtn">💾 Save</button>
+              <button class="btn" id="pasteUpdateBtn">📋 Paste</button>
+              <button class="btn bad" id="clearUpdateBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where channel updates will be logged.</p>
+          <div class="row">
+            <input id="updateInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="updateList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-catcreate">
+          <div class="card-head">
+            <h2>Category Creates</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveCatCreateBtn">💾 Save</button>
+              <button class="btn" id="pasteCatCreateBtn">📋 Paste</button>
+              <button class="btn bad" id="clearCatCreateBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where category creations will be logged.</p>
+          <div class="row">
+            <input id="catcInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="catcList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-catdelete">
+          <div class="card-head">
+            <h2>Category Deletes</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveCatDeleteBtn">💾 Save</button>
+              <button class="btn" id="pasteCatDeleteBtn">📋 Paste</button>
+              <button class="btn bad" id="clearCatDeleteBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where category deletions will be logged.</p>
+          <div class="row">
+            <input id="catdInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="catdList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-catu">
+          <div class="card-head">
+            <h2>Category Updates</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveCatUpdateBtn">💾 Save</button>
+              <button class="btn" id="pasteCatUpdateBtn">📋 Paste</button>
+              <button class="btn bad" id="clearCatUpdateBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where category updates will be logged.</p>
+          <div class="row">
+            <input id="catuInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="catuList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-thc">
+          <div class="card-head">
+            <h2>Thread Creates</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveThcBtn">💾 Save</button>
+              <button class="btn" id="pasteThcBtn">📋 Paste</button>
+              <button class="btn bad" id="clearThcBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">Channel where new threads will be logged.</p>
+          <div class="row">
+            <input id="thcInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="thcList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-thu">
+          <div class="card-head">
+            <h2>Thread Updates</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveThuBtn">💾 Save</button>
+              <button class="btn" id="pasteThuBtn">📋 Paste</button>
+              <button class="btn bad" id="clearThuBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">
+            Channel where thread updates (rename, archive, lock, slowmode) will
+            be logged.
+          </p>
+          <div class="row">
+            <input id="thuInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="thuList" class="list"></div>
+        </div>
+
+        <div class="card" id="card-voice">
+          <div class="card-head">
+            <h2>Voice State Updates</h2>
+            <div class="mini">
+              <button class="btn ok" id="saveVoiceBtn">💾 Save</button>
+              <button class="btn" id="pasteVoiceBtn">📋 Paste</button>
+              <button class="btn bad" id="clearVoiceBtn">🗑️ Clear</button>
+            </div>
+          </div>
+          <p class="hint">
+            Channel where <b>voice joins/leaves/moves & toggles</b> will be
+            logged.
+          </p>
+          <div class="row">
+            <input id="voiceInput" type="text" placeholder="Channel ID" />
+          </div>
+          <div id="voiceList" class="list"></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="alert-container" class="alert-container"></div>
+    <script src="alerts/notification.js"></script>
+
+    <script>
+      const LOCAL_KEY = "axiom.events.v5";
+      const isId = (v) => /^\d{17,20}$/.test(String(v || "").trim());
+      const notify = (t, ti, ms) =>
+        typeof showNotification === "function"
+          ? showNotification(t, ti, ms)
+          : console.log("[" + t + "]", ti, ms);
+
+      let state = {
+        newChannel: "",
+        editChannel: "",
+        delChannel: "",
+        repChannel: "",
+        createChannel: "",
+        chdelChannel: "",
+        updateChannel: "",
+        catCreateChannel: "",
+        catDeleteChannel: "",
+        catUpdateChannel: "",
+        threadCreateChannel: "",
+        threadUpdateChannel: "",
+        voiceChannel: "",
+      };
+
+      async function eventsGet() {
+        if (window.api?.eventsGet) {
+          const r = await window.api.eventsGet();
+          if (r?.ok) return r.data || {};
+        }
+        try {
+          return JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}");
+        } catch {
+          return {};
+        }
+      }
+      async function eventsSave(payload) {
+        if (window.api?.eventsSave) {
+          const r = await window.api.eventsSave(payload);
+          return !!r?.ok;
+        }
+        try {
+          localStorage.setItem(LOCAL_KEY, JSON.stringify(payload));
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      function renderSingle(which) {
+        const idMap = {
+          new: {
+            listId: "newList",
+            inputId: "newInput",
+            get: () => state.newChannel,
+            set: (v) => (state.newChannel = v),
+          },
+          edit: {
+            listId: "editList",
+            inputId: "editInput",
+            get: () => state.editChannel,
+            set: (v) => (state.editChannel = v),
+          },
+          del: {
+            listId: "delList",
+            inputId: "delInput",
+            get: () => state.delChannel,
+            set: (v) => (state.delChannel = v),
+          },
+          rep: {
+            listId: "repList",
+            inputId: "repInput",
+            get: () => state.repChannel,
+            set: (v) => (state.repChannel = v),
+          },
+          create: {
+            listId: "createList",
+            inputId: "createInput",
+            get: () => state.createChannel,
+            set: (v) => (state.createChannel = v),
+          },
+          chdel: {
+            listId: "chdelList",
+            inputId: "chdelInput",
+            get: () => state.chdelChannel,
+            set: (v) => (state.chdelChannel = v),
+          },
+          update: {
+            listId: "updateList",
+            inputId: "updateInput",
+            get: () => state.updateChannel,
+            set: (v) => (state.updateChannel = v),
+          },
+          catc: {
+            listId: "catcList",
+            inputId: "catcInput",
+            get: () => state.catCreateChannel,
+            set: (v) => (state.catCreateChannel = v),
+          },
+          catd: {
+            listId: "catdList",
+            inputId: "catdInput",
+            get: () => state.catDeleteChannel,
+            set: (v) => (state.catDeleteChannel = v),
+          },
+          catu: {
+            listId: "catuList",
+            inputId: "catuInput",
+            get: () => state.catUpdateChannel,
+            set: (v) => (state.catUpdateChannel = v),
+          },
+          thc: {
+            listId: "thcList",
+            inputId: "thcInput",
+            get: () => state.threadCreateChannel,
+            set: (v) => (state.threadCreateChannel = v),
+          },
+          thu: {
+            listId: "thuList",
+            inputId: "thuInput",
+            get: () => state.threadUpdateChannel,
+            set: (v) => (state.threadUpdateChannel = v),
+          },
+          voice: {
+            listId: "voiceList",
+            inputId: "voiceInput",
+            get: () => state.voiceChannel,
+            set: (v) => (state.voiceChannel = v),
+          },
+        };
+        const m = idMap[which];
+        const list = document.getElementById(m.listId);
+        const input = document.getElementById(m.inputId);
+        list.innerHTML = "";
+        const id = m.get();
+
+        if (!id) {
+          const row = document.createElement("div");
+          row.className = "chip empty";
+          row.innerHTML = `<span class="cid">🆔 Channel ID</span><span class="mini"><button class="btn ghost" data-copy>Copy</button></span>`;
+          row.querySelector("[data-copy]").onclick = () => {
+            const v = (input.value || "").trim();
+            if (!isId(v)) {
+              input.classList.add("bad");
+              input.focus();
+              notify(
+                "help",
+                "Channel ID",
+                "Enter a valid ID (17–20 digits) above, then press Copy."
+              );
+              return;
+            }
+            input.classList.remove("bad");
+            navigator.clipboard?.writeText(v);
+            notify("success", "Copied", "Channel ID copied.");
+          };
+          list.appendChild(row);
+          return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "chip";
+        row.innerHTML = `
+          <span class="cid">🆔 ${id}</span>
+          <span class="mini">
+            <button class="btn ghost" data-copy>Copy</button>
+            <button class="btn bad" data-rm>Remove</button>
+          </span>`;
+        row.querySelector("[data-copy]").onclick = () => {
+          navigator.clipboard?.writeText(id);
+          notify("success", "Copied", "Channel ID copied.");
+        };
+        row.querySelector("[data-rm]").onclick = async () => {
+          m.set("");
+          input.value = "";
+          renderSingle(which);
+          await save(false);
+        };
+        list.appendChild(row);
+      }
+
+      async function load() {
+        const saved = await eventsGet();
+
+        const getArr = (k) => (Array.isArray(saved[k]) ? saved[k] : []);
+        const pick = (arr) => arr[0]?.toString() || "";
+
+        state.newChannel = pick(getArr("newChannels"));
+        state.editChannel = pick(getArr("editChannels"));
+        state.delChannel = pick(getArr("deleteChannels"));
+        state.repChannel = pick(getArr("replyChannels"));
+        state.createChannel = pick(getArr("createChannels"));
+        state.chdelChannel = pick(getArr("channelDeleteChannels"));
+        state.updateChannel = pick(getArr("updateChannels"));
+        state.catCreateChannel = pick(getArr("categoryCreateChannels"));
+        state.catDeleteChannel = pick(getArr("categoryDeleteChannels"));
+        state.catUpdateChannel = pick(getArr("categoryUpdateChannels"));
+        state.threadCreateChannel = pick(getArr("threadCreateChannels"));
+        state.threadUpdateChannel = pick(getArr("threadUpdateChannels"));
+
+        state.voiceChannel = pick(getArr("voiceUpdateChannels"));
+
+        const setVal = (id, v) => (document.getElementById(id).value = v);
+        setVal("newInput", state.newChannel);
+        setVal("editInput", state.editChannel);
+        setVal("delInput", state.delChannel);
+        setVal("repInput", state.repChannel);
+        setVal("createInput", state.createChannel);
+        setVal("chdelInput", state.chdelChannel);
+        setVal("updateInput", state.updateChannel);
+        setVal("catcInput", state.catCreateChannel);
+        setVal("catdInput", state.catDeleteChannel);
+        setVal("catuInput", state.catUpdateChannel);
+        setVal("thcInput", state.threadCreateChannel);
+        setVal("thuInput", state.threadUpdateChannel);
+        setVal("voiceInput", state.voiceChannel);
+
+        [
+          "new",
+          "edit",
+          "del",
+          "rep",
+          "create",
+          "chdel",
+          "update",
+          "catc",
+          "catd",
+          "catu",
+          "thc",
+          "thu",
+          "voice",
+        ].forEach(renderSingle);
+      }
+
+      async function save(show = true) {
+        const val = (id) => document.getElementById(id).value.trim();
+        const n = val("newInput"),
+          e = val("editInput"),
+          d = val("delInput"),
+          r = val("repInput"),
+          c = val("createInput"),
+          x = val("chdelInput"),
+          u = val("updateInput"),
+          cc = val("catcInput"),
+          cd = val("catdInput"),
+          cu = val("catuInput"),
+          tc = val("thcInput"),
+          tu = val("thuInput"),
+          v = val("voiceInput");
+
+        const validate = (el, v, label) => {
+          if (v && !isId(v)) {
+            el.classList.add("bad");
+            notify("fail", "Invalid ID", `${label} must be 17–20 digits.`);
+            return false;
+          }
+          el.classList.remove("bad");
+          return true;
+        };
+        if (
+          !validate(
+            document.getElementById("newInput"),
+            n,
+            "New Messages channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("editInput"),
+            e,
+            "Message Edits channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("delInput"),
+            d,
+            "Message Deletes channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("repInput"),
+            r,
+            "Message Replies log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("createInput"),
+            c,
+            "Channel Creates log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("chdelInput"),
+            x,
+            "Channel Deletes log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("updateInput"),
+            u,
+            "Channel Updates log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("catcInput"),
+            cc,
+            "Category Creates log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("catdInput"),
+            cd,
+            "Category Deletes log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("catuInput"),
+            cu,
+            "Category Updates log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("thcInput"),
+            tc,
+            "Thread Creates log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("thuInput"),
+            tu,
+            "Thread Updates log channel"
+          )
+        )
+          return;
+        if (
+          !validate(
+            document.getElementById("voiceInput"),
+            v,
+            "Voice Updates log channel"
+          )
+        )
+          return;
+
+        Object.assign(state, {
+          newChannel: n || "",
+          editChannel: e || "",
+          delChannel: d || "",
+          repChannel: r || "",
+          createChannel: c || "",
+          chdelChannel: x || "",
+          updateChannel: u || "",
+          catCreateChannel: cc || "",
+          catDeleteChannel: cd || "",
+          catUpdateChannel: cu || "",
+          threadCreateChannel: tc || "",
+          threadUpdateChannel: tu || "",
+          voiceChannel: v || "",
+        });
+
+        const ok = await eventsSave({
+          newChannels: state.newChannel ? [state.newChannel] : [],
+          editChannels: state.editChannel ? [state.editChannel] : [],
+          deleteChannels: state.delChannel ? [state.delChannel] : [],
+          replyChannels: state.repChannel ? [state.repChannel] : [],
+          createChannels: state.createChannel ? [state.createChannel] : [],
+          channelDeleteChannels: state.chdelChannel ? [state.chdelChannel] : [],
+          updateChannels: state.updateChannel ? [state.updateChannel] : [],
+          categoryCreateChannels: state.catCreateChannel
+            ? [state.catCreateChannel]
+            : [],
+          categoryDeleteChannels: state.catDeleteChannel
+            ? [state.catDeleteChannel]
+            : [],
+          categoryUpdateChannels: state.catUpdateChannel
+            ? [state.catUpdateChannel]
+            : [],
+          threadCreateChannels: state.threadCreateChannel
+            ? [state.threadCreateChannel]
+            : [],
+          threadUpdateChannels: state.threadUpdateChannel
+            ? [state.threadUpdateChannel]
+            : [],
+          voiceUpdateChannels: state.voiceChannel ? [state.voiceChannel] : [],
+          watchVoiceUpdates: true,
+
+          watchNew: true,
+          watchEdits: true,
+          watchDeletes: true,
+          watchReplies: true,
+          watchCreates: true,
+          watchChannelDeletes: true,
+          watchChannelUpdates: true,
+          watchCategoryCreates: true,
+          watchCategoryDeletes: true,
+          watchCategoryUpdates: true,
+          watchThreadCreates: true,
+          watchThreadUpdates: true,
+          onlySelected: true,
+        });
+
+        [
+          "new",
+          "edit",
+          "del",
+          "rep",
+          "create",
+          "chdel",
+          "update",
+          "catc",
+          "catd",
+          "catu",
+          "thc",
+          "thu",
+          "voice",
+        ].forEach(renderSingle);
+
+        if (show)
+          notify(
+            ok ? "success" : "fail",
+            ok ? "Saved" : "Save failed",
+            ok ? "Configuration stored." : "Could not persist configuration."
+          );
+      }
+
+      const bindClick = (id) =>
+        (document.getElementById(id).onclick = () => save(true));
+      [
+        "saveNewBtn",
+        "saveEditBtn",
+        "saveDelBtn",
+        "saveRepBtn",
+        "saveCreateBtn",
+        "saveChDelBtn",
+        "saveUpdateBtn",
+        "saveCatCreateBtn",
+        "saveCatDeleteBtn",
+        "saveCatUpdateBtn",
+        "saveThcBtn",
+        "saveThuBtn",
+        "saveVoiceBtn",
+        "saveAllBtn",
+      ].forEach(bindClick);
+
+      const clear = async (k, inputId, which, msg) => {
+        state[k] = "";
+        const el = document.getElementById(inputId);
+        if (el) el.value = "";
+        renderSingle(which);
+        await save(false);
+        notify("success", "Cleared", msg);
+      };
+      document.getElementById("clearNewBtn").onclick = () =>
+        clear("newChannel", "newInput", "new", "New Messages channel cleared.");
+      document.getElementById("clearEditBtn").onclick = () =>
+        clear(
+          "editChannel",
+          "editInput",
+          "edit",
+          "Message Edits channel cleared."
+        );
+      document.getElementById("clearDelBtn").onclick = () =>
+        clear(
+          "delChannel",
+          "delInput",
+          "del",
+          "Message Deletes channel cleared."
+        );
+      document.getElementById("clearRepBtn").onclick = () =>
+        clear(
+          "repChannel",
+          "repInput",
+          "rep",
+          "Message Replies log channel cleared."
+        );
+      document.getElementById("clearCreateBtn").onclick = () =>
+        clear(
+          "createChannel",
+          "createInput",
+          "create",
+          "Channel Creates log channel cleared."
+        );
+      document.getElementById("clearChDelBtn").onclick = () =>
+        clear(
+          "chdelChannel",
+          "chdelInput",
+          "chdel",
+          "Channel Deletes log channel cleared."
+        );
+      document.getElementById("clearUpdateBtn").onclick = () =>
+        clear(
+          "updateChannel",
+          "updateInput",
+          "update",
+          "Channel Updates log channel cleared."
+        );
+      document.getElementById("clearCatCreateBtn").onclick = () =>
+        clear(
+          "catCreateChannel",
+          "catcInput",
+          "catc",
+          "Category Creates log channel cleared."
+        );
+      document.getElementById("clearCatDeleteBtn").onclick = () =>
+        clear(
+          "catDeleteChannel",
+          "catdInput",
+          "catd",
+          "Category Deletes log channel cleared."
+        );
+      document.getElementById("clearCatUpdateBtn").onclick = () =>
+        clear(
+          "catUpdateChannel",
+          "catuInput",
+          "catu",
+          "Category Updates log channel cleared."
+        );
+      document.getElementById("clearThcBtn").onclick = () =>
+        clear(
+          "threadCreateChannel",
+          "thcInput",
+          "thc",
+          "Thread Creates log channel cleared."
+        );
+      document.getElementById("clearThuBtn").onclick = () =>
+        clear(
+          "threadUpdateChannel",
+          "thuInput",
+          "thu",
+          "Thread Updates log channel cleared."
+        );
+      document.getElementById("clearVoiceBtn").onclick = () =>
+        clear(
+          "voiceChannel",
+          "voiceInput",
+          "voice",
+          "Voice Updates log channel cleared."
+        );
+
+      document.getElementById("removeAllBtn").onclick = async () => {
+        Object.keys(state).forEach((k) => (state[k] = ""));
+        [
+          "newInput",
+          "editInput",
+          "delInput",
+          "repInput",
+          "createInput",
+          "chdelInput",
+          "updateInput",
+          "catcInput",
+          "catdInput",
+          "catuInput",
+          "thcInput",
+          "thuInput",
+          "voiceInput",
+        ].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+        [
+          "new",
+          "edit",
+          "del",
+          "rep",
+          "create",
+          "chdel",
+          "update",
+          "catc",
+          "catd",
+          "catu",
+          "thc",
+          "thu",
+          "voice",
+        ].forEach(renderSingle);
+        await save(false);
+        notify("success", "Cleared", "All IDs on this page were removed.");
+      };
+
+      const pasteInto = async (idField, stateKey, which) => {
+        try {
+          const txt = (await navigator.clipboard.readText())?.trim();
+          if (!txt)
+            return notify("warning", "Clipboard", "Clipboard is empty.");
+          if (!isId(txt))
+            return notify(
+              "fail",
+              "Invalid ID",
+              "Clipboard value is not a valid channel ID."
+            );
+          document.getElementById(idField).value = txt;
+          state[stateKey] = txt;
+          renderSingle(which);
+          notify("help", "Pasted", "Value pasted. Press Save to store.");
+        } catch {
+          notify("fail", "Clipboard", "Cannot read clipboard here.");
+        }
+      };
+      document.getElementById("pasteNewBtn").onclick = () =>
+        pasteInto("newInput", "newChannel", "new");
+      document.getElementById("pasteEditBtn").onclick = () =>
+        pasteInto("editInput", "editChannel", "edit");
+      document.getElementById("pasteDelBtn").onclick = () =>
+        pasteInto("delInput", "delChannel", "del");
+      document.getElementById("pasteRepBtn").onclick = () =>
+        pasteInto("repInput", "repChannel", "rep");
+      document.getElementById("pasteCreateBtn").onclick = () =>
+        pasteInto("createInput", "createChannel", "create");
+      document.getElementById("pasteChDelBtn").onclick = () =>
+        pasteInto("chdelInput", "chdelChannel", "chdel");
+      document.getElementById("pasteUpdateBtn").onclick = () =>
+        pasteInto("updateInput", "updateChannel", "update");
+      document.getElementById("pasteCatCreateBtn").onclick = () =>
+        pasteInto("catcInput", "catCreateChannel", "catc");
+      document.getElementById("pasteCatDeleteBtn").onclick = () =>
+        pasteInto("catdInput", "catDeleteChannel", "catd");
+      document.getElementById("pasteCatUpdateBtn").onclick = () =>
+        pasteInto("catuInput", "catUpdateChannel", "catu");
+      document.getElementById("pasteThcBtn").onclick = () =>
+        pasteInto("thcInput", "threadCreateChannel", "thc");
+      document.getElementById("pasteThuBtn").onclick = () =>
+        pasteInto("thuInput", "threadUpdateChannel", "thu");
+      document.getElementById("pasteVoiceBtn").onclick = () =>
+        pasteInto("voiceInput", "voiceChannel", "voice");
+
+      const bindEnter = (id, btn) =>
+        document.getElementById(id).addEventListener("keydown", (e) => {
+          if (e.key === "Enter") document.getElementById(btn).click();
+        });
+      bindEnter("newInput", "saveNewBtn");
+      bindEnter("editInput", "saveEditBtn");
+      bindEnter("delInput", "saveDelBtn");
+      bindEnter("repInput", "saveRepBtn");
+      bindEnter("createInput", "saveCreateBtn");
+      bindEnter("chdelInput", "saveChDelBtn");
+      bindEnter("updateInput", "saveUpdateBtn");
+      bindEnter("catcInput", "saveCatCreateBtn");
+      bindEnter("catdInput", "saveCatDeleteBtn");
+      bindEnter("catuInput", "saveCatUpdateBtn");
+      bindEnter("thcInput", "saveThcBtn");
+      bindEnter("thuInput", "saveThuBtn");
+      bindEnter("voiceInput", "saveVoiceBtn");
+
+      window.addEventListener("DOMContentLoaded", load);
+    </script>
+  </body>
+</html>

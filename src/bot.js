@@ -15,6 +15,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
+  Partials,
 } = require("discord.js");
 
 const { loadConfig } = require("./functions/setupHandler");
@@ -48,6 +49,14 @@ class Bot extends EventEmitter {
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates,
+      ],
+      partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction,
+        Partials.GuildMember,
+        Partials.User,
       ],
     });
     this.client.commands = new Collection();

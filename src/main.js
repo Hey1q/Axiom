@@ -157,6 +157,7 @@ function resolvePageSafe(page) {
     "channels.html",
     "tickets.html",
     "giveaway.html",
+    "message-router.html",
   ]);
 
   if (whitelist.has(page)) return path.join(pagesRoot, page);
@@ -2300,6 +2301,177 @@ app.whenReady().then(() => {
     console.warn("failed to schedule previous giveaways:", e?.message || e);
   }
 });
+
+function evIsId(id) {
+  return /^\d{17,20}$/.test(String(id || "").trim());
+}
+function evUniq(arr) {
+  return Array.from(new Set((arr || []).map(String).filter(evIsId)));
+}
+
+// ---- Axiom Events ----
+function evIsId(id) {
+  return /^\d{17,20}$/.test(String(id ?? "").trim());
+}
+function evUniq(arr) {
+  if (!Array.isArray(arr)) return [];
+  return Array.from(
+    new Set(arr.map((v) => String(v ?? "").trim()).filter(evIsId))
+  );
+}
+function hasOwn(o, k) {
+  return Object.prototype.hasOwnProperty.call(o, k);
+}
+
+ipcMain.handle("events:get", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    return {
+      ok: true,
+      data: {
+        editChannels: Array.isArray(cfg.EVENTS_EDIT_CHANNEL_IDS)
+          ? cfg.EVENTS_EDIT_CHANNEL_IDS
+          : [],
+        newChannels: Array.isArray(cfg.EVENTS_NEW_CHANNEL_IDS)
+          ? cfg.EVENTS_NEW_CHANNEL_IDS
+          : [],
+        deleteChannels: Array.isArray(cfg.EVENTS_DELETE_CHANNEL_IDS)
+          ? cfg.EVENTS_DELETE_CHANNEL_IDS
+          : [],
+        replyChannels: Array.isArray(cfg.EVENTS_REPLY_CHANNEL_IDS)
+          ? cfg.EVENTS_REPLY_CHANNEL_IDS
+          : [],
+
+        createChannels: Array.isArray(cfg.EVENTS_CREATE_CHANNEL_IDS)
+          ? cfg.EVENTS_CREATE_CHANNEL_IDS
+          : [],
+        channelDeleteChannels: Array.isArray(cfg.EVENTS_CHANNEL_DELETE_IDS)
+          ? cfg.EVENTS_CHANNEL_DELETE_IDS
+          : [],
+        updateChannels: Array.isArray(cfg.EVENTS_CHANNEL_UPDATE_IDS)
+          ? cfg.EVENTS_CHANNEL_UPDATE_IDS
+          : [],
+
+        categoryCreateChannels: Array.isArray(cfg.EVENTS_CATEGORY_CREATE_IDS)
+          ? cfg.EVENTS_CATEGORY_CREATE_IDS
+          : [],
+        categoryDeleteChannels: Array.isArray(cfg.EVENTS_CATEGORY_DELETE_IDS)
+          ? cfg.EVENTS_CATEGORY_DELETE_IDS
+          : [],
+        categoryUpdateChannels: Array.isArray(cfg.EVENTS_CATEGORY_UPDATE_IDS)
+          ? cfg.EVENTS_CATEGORY_UPDATE_IDS
+          : [],
+
+        threadCreateChannels: Array.isArray(cfg.EVENTS_THREAD_CREATE_IDS)
+          ? cfg.EVENTS_THREAD_CREATE_IDS
+          : [],
+        threadUpdateChannels: Array.isArray(cfg.EVENTS_THREAD_UPDATE_IDS)
+          ? cfg.EVENTS_THREAD_UPDATE_IDS
+          : [],
+
+        voiceUpdateChannels: Array.isArray(cfg.EVENTS_VOICE_UPDATE_IDS)
+          ? cfg.EVENTS_VOICE_UPDATE_IDS
+          : [],
+        watchVoiceUpdates: cfg.EVENTS_WATCH_VOICE_UPDATES !== false,
+
+        watchEdits: cfg.EVENTS_WATCH_EDITS !== false,
+        watchNew: cfg.EVENTS_WATCH_NEW !== false,
+        watchDeletes: cfg.EVENTS_WATCH_DELETES !== false,
+        watchReplies: cfg.EVENTS_WATCH_REPLIES !== false,
+
+        watchCreates: cfg.EVENTS_WATCH_CREATES !== false,
+        watchChannelDeletes: cfg.EVENTS_WATCH_CHANNEL_DELETES !== false,
+        watchChannelUpdates: cfg.EVENTS_WATCH_CHANNEL_UPDATES !== false,
+
+        watchCategoryCreates: cfg.EVENTS_WATCH_CATEGORY_CREATES !== false,
+        watchCategoryDeletes: cfg.EVENTS_WATCH_CATEGORY_DELETES !== false,
+        watchCategoryUpdates: cfg.EVENTS_WATCH_CATEGORY_UPDATES !== false,
+
+        watchThreadCreates: cfg.EVENTS_WATCH_THREAD_CREATES !== false,
+        watchThreadUpdates: cfg.EVENTS_WATCH_THREAD_UPDATES !== false,
+
+        onlySelected: cfg.EVENTS_ONLY_SELECTED !== false,
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("events:save", async (_e, payload = {}) => {
+  try {
+    const cfg = loadConfig() || {};
+
+    if (hasOwn(payload, "editChannels"))
+      cfg.EVENTS_EDIT_CHANNEL_IDS = evUniq(payload.editChannels);
+    if (hasOwn(payload, "newChannels"))
+      cfg.EVENTS_NEW_CHANNEL_IDS = evUniq(payload.newChannels);
+    if (hasOwn(payload, "deleteChannels"))
+      cfg.EVENTS_DELETE_CHANNEL_IDS = evUniq(payload.deleteChannels);
+    if (hasOwn(payload, "replyChannels"))
+      cfg.EVENTS_REPLY_CHANNEL_IDS = evUniq(payload.replyChannels);
+
+    if (hasOwn(payload, "createChannels"))
+      cfg.EVENTS_CREATE_CHANNEL_IDS = evUniq(payload.createChannels);
+    if (hasOwn(payload, "channelDeleteChannels"))
+      cfg.EVENTS_CHANNEL_DELETE_IDS = evUniq(payload.channelDeleteChannels);
+    if (hasOwn(payload, "updateChannels"))
+      cfg.EVENTS_CHANNEL_UPDATE_IDS = evUniq(payload.updateChannels);
+
+    if (hasOwn(payload, "categoryCreateChannels"))
+      cfg.EVENTS_CATEGORY_CREATE_IDS = evUniq(payload.categoryCreateChannels);
+    if (hasOwn(payload, "categoryDeleteChannels"))
+      cfg.EVENTS_CATEGORY_DELETE_IDS = evUniq(payload.categoryDeleteChannels);
+    if (hasOwn(payload, "categoryUpdateChannels"))
+      cfg.EVENTS_CATEGORY_UPDATE_IDS = evUniq(payload.categoryUpdateChannels);
+
+    if (hasOwn(payload, "threadCreateChannels"))
+      cfg.EVENTS_THREAD_CREATE_IDS = evUniq(payload.threadCreateChannels);
+    if (hasOwn(payload, "threadUpdateChannels"))
+      cfg.EVENTS_THREAD_UPDATE_IDS = evUniq(payload.threadUpdateChannels);
+
+    if (hasOwn(payload, "voiceUpdateChannels"))
+      cfg.EVENTS_VOICE_UPDATE_IDS = evUniq(payload.voiceUpdateChannels);
+    if (hasOwn(payload, "watchVoiceUpdates"))
+      cfg.EVENTS_WATCH_VOICE_UPDATES = !!payload.watchVoiceUpdates;
+
+    if (hasOwn(payload, "watchEdits"))
+      cfg.EVENTS_WATCH_EDITS = !!payload.watchEdits;
+    if (hasOwn(payload, "watchNew")) cfg.EVENTS_WATCH_NEW = !!payload.watchNew;
+    if (hasOwn(payload, "watchDeletes"))
+      cfg.EVENTS_WATCH_DELETES = !!payload.watchDeletes;
+    if (hasOwn(payload, "watchReplies"))
+      cfg.EVENTS_WATCH_REPLIES = !!payload.watchReplies;
+
+    if (hasOwn(payload, "watchCreates"))
+      cfg.EVENTS_WATCH_CREATES = !!payload.watchCreates;
+    if (hasOwn(payload, "watchChannelDeletes"))
+      cfg.EVENTS_WATCH_CHANNEL_DELETES = !!payload.watchChannelDeletes;
+    if (hasOwn(payload, "watchChannelUpdates"))
+      cfg.EVENTS_WATCH_CHANNEL_UPDATES = !!payload.watchChannelUpdates;
+
+    if (hasOwn(payload, "watchCategoryCreates"))
+      cfg.EVENTS_WATCH_CATEGORY_CREATES = !!payload.watchCategoryCreates;
+    if (hasOwn(payload, "watchCategoryDeletes"))
+      cfg.EVENTS_WATCH_CATEGORY_DELETES = !!payload.watchCategoryDeletes;
+    if (hasOwn(payload, "watchCategoryUpdates"))
+      cfg.EVENTS_WATCH_CATEGORY_UPDATES = !!payload.watchCategoryUpdates;
+
+    if (hasOwn(payload, "watchThreadCreates"))
+      cfg.EVENTS_WATCH_THREAD_CREATES = !!payload.watchThreadCreates;
+    if (hasOwn(payload, "watchThreadUpdates"))
+      cfg.EVENTS_WATCH_THREAD_UPDATES = !!payload.watchThreadUpdates;
+
+    if (hasOwn(payload, "onlySelected"))
+      cfg.EVENTS_ONLY_SELECTED = !!payload.onlySelected;
+
+    await saveOwnerConfig(cfg);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+// ---- End Events ----
 
 app.on("browser-window-created", (event, win) => {
   win.webContents.on("context-menu", (_e, params) => {

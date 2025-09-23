@@ -111,4 +111,7 @@ contextBridge.exposeInMainWorld("api", {
   giveawayGetLogsChannel: () => invoke("giveaway:getLogsChannel"),
   giveawaySetLogsChannel: (id) => invoke("giveaway:setLogsChannel", id),
   giveawayClearLogsChannel: () => invoke("giveaway:clearLogsChannel"),
+
+  eventsGet: () => ipcRenderer.invoke("events:get"),
+  eventsSave: (p) => ipcRenderer.invoke("events:save", p),
 });
