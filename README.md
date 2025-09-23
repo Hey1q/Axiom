@@ -2,7 +2,17 @@ node-v22.17.0-x64
 https://vimeo.com/1110603175
 https://vimeo.com/1110859324
 
+<img width="1439" height="899" alt="Screenshot 2025-09-14 092819" src="https://github.com/user-attachments/assets/f65f727d-8972-4056-a320-962cce2b7fe0" />
+
 ## Support
+
+### Wise bank invite:
+https://wise.com/invite/ihpc/andreask2980
+
+### Aircash invite:
+https://link.aircash.eu/Referral/Index?referralCode=andreask25
+
+
 
 If you like this project and want to support me ❤️, you can donate here:
 ### Paypal
