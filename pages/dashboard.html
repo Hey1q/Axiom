@@ -126,7 +126,14 @@
             />
             <div class="card-label">Axiom • Events</div>
           </div>
-          <div class="card gradient7">System Info 5</div>
+          <div class="card gradient7" id="clear-messages-card">
+            <img
+              src="../src/assets/clearmessage.png"
+              alt="Clear Messages Icon"
+              class="icon-img-large"
+            />
+            <div class="card-label">Clear Messages</div>
+          </div>
           <div class="card gradient8">System Info 6</div>
           <div class="card gradient9">System Info 7</div>
           <div class="card gradient10">System Info 8</div>
@@ -272,6 +279,11 @@
           .getElementById("events-card")
           .addEventListener("click", function () {
             window.location.href = "message-router.html";
+          });
+        document
+          .getElementById("clear-messages-card")
+          .addEventListener("click", function () {
+            window.location.href = "clearmessages.html";
           });
 
         const cardSlider = document.getElementById("card-slider");

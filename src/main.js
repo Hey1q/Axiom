@@ -158,6 +158,7 @@ function resolvePageSafe(page) {
     "tickets.html",
     "giveaway.html",
     "message-router.html",
+    "clearmessages.html",
   ]);
 
   if (whitelist.has(page)) return path.join(pagesRoot, page);
@@ -2308,6 +2309,185 @@ function evIsId(id) {
 function evUniq(arr) {
   return Array.from(new Set((arr || []).map(String).filter(evIsId)));
 }
+
+/// Start Clear Messages ///
+ipcMain.handle("channels:listText", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = (cfg.GUILD_ID || "").trim();
+    if (!/^\d{17,20}$/.test(guildId)) {
+      return {
+        ok: false,
+        error: "GUILD_ID missing/invalid in owner-config.json",
+      };
+    }
+    const channels = await bot.listTextChannels(guildId);
+    return { ok: true, channels };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("clearmessages:getLogChannel", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    return { ok: true, channelId: cfg.CLEAR_MESSAGES_LOG_CHANNEL_ID || null };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("clearmessages:setLogChannel", async (_e, rawId) => {
+  try {
+    const s = String(rawId || "").trim();
+    if (!/^\d{17,20}$/.test(s))
+      return { ok: false, error: "Invalid channel ID format." };
+    const cfg = loadConfig() || {};
+    cfg.CLEAR_MESSAGES_LOG_CHANNEL_ID = s;
+    await saveOwnerConfig(cfg);
+    return { ok: true, channelId: s };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("clearmessages:clearLogChannel", async () => {
+  try {
+    const cfg = loadConfig() || {};
+    cfg.CLEAR_MESSAGES_LOG_CHANNEL_ID = null;
+    await saveOwnerConfig(cfg);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("clear:purge", async (_e, rawOpts) => {
+  try {
+    const cfg = loadConfig() || {};
+    const guildId = String(cfg.GUILD_ID || "").trim();
+    if (!/^\d{17,20}$/.test(guildId)) {
+      return { ok: false, error: "GUILD_ID missing/invalid in config." };
+    }
+
+    const channelId = String(rawOpts?.channelId || "").trim();
+    if (!/^\d{17,20}$/.test(channelId)) {
+      return { ok: false, error: "Invalid channel ID format." };
+    }
+    const max = Math.max(1, Math.min(1000, parseInt(rawOpts?.max ?? 1000, 10)));
+    const botOnly = !!rawOpts?.botOnly;
+    const deleteOlder = rawOpts?.deleteOlder !== false;
+    const deleteWebhooks = !!rawOpts?.deleteWebhooks;
+
+    const result = await bot.purgeChannelMessages({
+      guildId,
+      channelId,
+      max,
+      botOnly,
+      deleteOlder,
+      deleteWebhooks,
+    });
+
+    const logChannelId = String(cfg.CLEAR_MESSAGES_LOG_CHANNEL_ID || "").trim();
+    if (/^\d{17,20}$/.test(logChannelId)) {
+      const channelName =
+        (await bot.getChannelName(guildId, channelId)) || `#${channelId}`;
+
+      const fields = [
+        {
+          name: "📊 Status",
+          value:
+            result.deleted.total > 0
+              ? `✅ Deleted **${result.deleted.total}** messages`
+              : "ℹ️ No messages were deleted",
+          inline: false,
+        },
+        {
+          name: "🛠 Mode",
+          value: botOnly ? "Bot only" : "All messages",
+          inline: true,
+        },
+        {
+          name: "🗂 Older than 14d",
+          value: deleteOlder ? "Yes (single delete)" : "No",
+          inline: true,
+        },
+        { name: "📦 Requested", value: String(max), inline: true },
+        {
+          name: "🧹 Deleted (bulk/single)",
+          value: `${result.deleted.bulk} / ${result.deleted.single}`,
+          inline: true,
+        },
+        {
+          name: "🧮 Total deleted",
+          value: String(result.deleted.total),
+          inline: true,
+        },
+      ];
+
+      if (deleteWebhooks) {
+        fields.push({
+          name: "🪝 Webhooks deleted",
+          value: String(result.webhooksDeleted || 0),
+          inline: true,
+        });
+      }
+
+      await bot.sendEmbed({
+        guildId,
+        channelId: logChannelId,
+        messageContent: "🧹 **Clear Messages** — operation summary",
+        embed: {
+          title: "🧹 Clear Messages",
+          description: `**Channel:** ${channelName} (\`${channelId}\`)`,
+          color: "0x0ea5e9",
+          fields,
+          footer: { text: "ClearMessages • Axiom" },
+          addTimestamp: true,
+        },
+      });
+    }
+
+    return { ok: true, result };
+  } catch (err) {
+    try {
+      const cfg = loadConfig() || {};
+      const guildId = String(cfg.GUILD_ID || "").trim();
+      const logChannelId = String(
+        cfg.CLEAR_MESSAGES_LOG_CHANNEL_ID || ""
+      ).trim();
+      const channelId = String(rawOpts?.channelId || "").trim();
+
+      if (/^\d{17,20}$/.test(guildId) && /^\d{17,20}$/.test(logChannelId)) {
+        const channelName =
+          (await bot.getChannelName(guildId, channelId)) || `#${channelId}`;
+
+        await bot.sendEmbed({
+          guildId,
+          channelId: logChannelId,
+          messageContent: "🛑 **Clear Messages** — failed",
+          embed: {
+            title: "🛑 Clear Messages failed",
+            description: `**Channel:** ${channelName} (\`${channelId}\`)`,
+            color: "0xff5b5b",
+            fields: [
+              {
+                name: "Error",
+                value: "```" + (err?.message || String(err)) + "```",
+              },
+            ],
+            footer: { text: "ClearMessages • Axiom" },
+            addTimestamp: true,
+          },
+        });
+      }
+    } catch {}
+
+    return { ok: false, error: err?.message || String(err) };
+  }
+});
+
+/// End Clear Messages ///
 
 // ---- Axiom Events ----
 function evIsId(id) {

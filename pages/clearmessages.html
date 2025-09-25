@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clear Messages</title>
+
+    <link rel="stylesheet" href="styles/global.css" />
+    <link rel="stylesheet" href="styles/clearmessages.css" />
+    <link rel="stylesheet" href="alerts/notification.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <a class="nav-home" href="dashboard.html" aria-label="Back to Dashboard">
+        <img src="../src/assets/home.png" alt="Home" />
+        <span>Dashboard</span>
+      </a>
+      <h1>Clear Messages</h1>
+    </header>
+
+    <main class="wrap">
+      <section id="clear-messages-card" class="card">
+        <div class="card-head">
+          <div class="icon-wrap">
+            <img
+              class="icon-img-large"
+              src="../src/assets/clearmessage.png"
+              alt="Clear"
+            />
+          </div>
+          <div>
+            <h2>Channel &amp; Options</h2>
+            <p class="hint">
+              Pick a channel and what to remove. Messages older than 14 days are
+              deleted one-by-one (Discord limitation).
+            </p>
+          </div>
+        </div>
+
+        <label class="lbl" for="channelSelect">Channel (required)</label>
+        <div class="row gap">
+          <select
+            id="channelSelect"
+            class="select"
+            aria-label="Select channel"
+          ></select>
+          <button id="btnRefresh" class="btn ghost" type="button">
+            Refresh
+          </button>
+        </div>
+        <p class="hint">Only text/announcement channels are listed.</p>
+
+        <div class="grid-2">
+          <div class="panel">
+            <label class="lbl" for="amountInput"
+              >How many messages (1–1000)</label
+            >
+            <div class="row">
+              <input
+                id="amountInput"
+                class="input"
+                type="number"
+                min="1"
+                max="1000"
+                value="200"
+                inputmode="numeric"
+                pattern="[0-9]*"
+              />
+            </div>
+            <p class="hint">
+              We scan up to this number. Bulk delete is used under 14 days,
+              older ones are single deleted.
+            </p>
+          </div>
+
+          <div class="panel">
+            <span class="lbl">Options</span>
+
+            <label class="switch-line">
+              <input id="optBotsOnly" type="checkbox" />
+              <span class="switch"></span>
+              <span class="switch-text">
+                Bot messages only
+                <span class="sub"
+                  >Delete only messages from this bot account.</span
+                >
+              </span>
+            </label>
+
+            <label class="switch-line">
+              <input id="optIncludeWebhooks" type="checkbox" />
+              <span class="switch"></span>
+              <span class="switch-text">
+                Also delete Webhook messages
+                <span class="sub"
+                  >Include messages posted via channel Webhooks.</span
+                >
+              </span>
+            </label>
+
+            <label class="switch-line">
+              <input id="optOlder" type="checkbox" checked />
+              <span class="switch"></span>
+              <span class="switch-text">
+                Also delete &gt;14 days (slower)
+                <span class="sub"
+                  >Old messages require single deletes and take longer.</span
+                >
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="log-block">
+          <label class="lbl" for="logChannelId"
+            >Log Channel ID <span style="color: #ef4444">*</span></label
+          >
+          <div class="row">
+            <input
+              id="logChannelId"
+              class="input grow"
+              placeholder="123456789012345678"
+              aria-required="true"
+            />
+            <button id="btnPaste" class="btn ghost" type="button">Paste</button>
+            <button id="btnSaveLogId" class="btn primary" type="button">
+              Save
+            </button>
+            <button id="btnRemoveLogId" class="btn danger" type="button">
+              Remove
+            </button>
+          </div>
+          <p class="hint" id="logHelp">
+            You must set a valid channel ID. Stored as
+            <code>CLEAR_MESSAGES_LOG_CHANNEL_ID</code> in
+            <code>owner-config.json</code>.
+          </p>
+        </div>
+
+        <div class="actions">
+          <button id="runBtn" class="btn big primary" type="button">
+            Run Clear
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <div id="alert-container" class="alert-container"></div>
+    <script src="alerts/notification.js"></script>
+
+    <script>
+      const qs = (s, r = document) => r.querySelector(s);
+      const notify = (t, h, m) => {
+        if (typeof showNotification === "function") showNotification(t, h, m);
+        else console.log("[" + t + "] " + h + ": " + m);
+      };
+      const idRegex = /^\d{17,20}$/;
+
+      async function loadChannels() {
+        const sel = qs("#channelSelect");
+        sel.innerHTML = "";
+        sel.disabled = true;
+        try {
+          const res = await window.api.channelsListText();
+          if (!res?.ok)
+            throw new Error(res?.error || "Failed to fetch channels");
+          const channels = res.channels || [];
+          for (const ch of channels) {
+            const opt = document.createElement("option");
+            opt.value = ch.id;
+            opt.textContent = ch.name;
+            sel.appendChild(opt);
+          }
+          sel.disabled = false;
+          notify("success", "Channels", "Channel list refreshed.");
+        } catch (e) {
+          notify("fail", "Channels", e.message || "Could not load channels.");
+        }
+      }
+
+      async function loadSavedLogId() {
+        try {
+          const res = await window.api.clearGetLogChannel();
+          if (res?.ok && res.channelId)
+            qs("#logChannelId").value = res.channelId;
+        } catch {}
+      }
+
+      async function saveLogChannel() {
+        const id = qs("#logChannelId").value.trim();
+        if (!idRegex.test(id)) {
+          notify(
+            "warning",
+            "Invalid ID",
+            "Enter a valid Discord channel ID (17–20 digits)."
+          );
+          return;
+        }
+        const res = await window.api.clearSetLogChannel(id);
+        if (res?.ok) notify("success", "Saved", "Log channel ID saved.");
+        else notify("fail", "Save failed", res?.error || "Unknown error");
+      }
+      async function removeLogChannel() {
+        const res = await window.api.clearRemoveLogChannel();
+        if (res?.ok) {
+          qs("#logChannelId").value = "";
+          notify("success", "Removed", "Log channel ID removed.");
+        } else {
+          notify("fail", "Remove failed", res?.error || "Unknown error");
+        }
+      }
+
+      async function runClear() {
+        const sel = qs("#channelSelect");
+        const channelId = (sel.value || "").trim();
+        if (!idRegex.test(channelId)) {
+          notify("warning", "Select channel", "You must select a channel.");
+          return;
+        }
+
+        const logId = qs("#logChannelId").value.trim();
+        if (!idRegex.test(logId)) {
+          notify(
+            "warning",
+            "Log Channel required",
+            "Please set a valid Log Channel ID (17–20 digits) and press Save."
+          );
+          qs("#logChannelId").focus();
+          return;
+        }
+
+        const max = Math.max(
+          1,
+          Math.min(1000, parseInt(qs("#amountInput").value || "1", 10))
+        );
+        const botOnly = !!qs("#optBotsOnly").checked;
+        const deleteWebhooks = !!qs("#optIncludeWebhooks").checked;
+        const deleteOlder = !!qs("#optOlder").checked;
+
+        try {
+          const res = await window.api.clearPurge({
+            channelId,
+            max,
+            botOnly,
+            deleteOlder,
+            deleteWebhooks,
+          });
+          if (!res?.ok) throw new Error(res?.error || "Purge failed.");
+          notify(
+            "success",
+            "Channel cleaned",
+            `Scanned: ${res.result?.scanned ?? 0} • Deleted: ${
+              res.result?.deleted?.total ?? 0
+            }`
+          );
+        } catch (e) {
+          notify("fail", "Failed", e.message || "Could not clear messages.");
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        loadChannels();
+        loadSavedLogId();
+
+        qs("#btnRefresh").addEventListener("click", loadChannels);
+        qs("#btnPaste").addEventListener("click", async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            if (text) qs("#logChannelId").value = text.trim();
+          } catch {}
+        });
+        qs("#btnSaveLogId").addEventListener("click", saveLogChannel);
+        qs("#btnRemoveLogId").addEventListener("click", removeLogChannel);
+
+        qs("#runBtn").addEventListener("click", runClear);
+
+        document.addEventListener("keydown", (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            runClear();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

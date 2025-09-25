@@ -114,4 +114,10 @@ contextBridge.exposeInMainWorld("api", {
 
   eventsGet: () => ipcRenderer.invoke("events:get"),
   eventsSave: (p) => ipcRenderer.invoke("events:save", p),
+
+  channelsListText: () => invoke("channels:listText"),
+  clearPurge: (opts) => invoke("clear:purge", opts),
+  clearGetLogChannel: () => invoke("clearmessages:getLogChannel"),
+  clearSetLogChannel: (id) => invoke("clearmessages:setLogChannel", id),
+  clearRemoveLogChannel: () => invoke("clearmessages:clearLogChannel"),
 });

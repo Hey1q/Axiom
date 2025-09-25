@@ -620,13 +620,43 @@ class Bot extends EventEmitter {
     return total;
   }
 
-  async purgeChannelMessages(opts) {
+  async _deleteChannelWebhooks(guildId, channelId) {
+    await this._ensureReady();
+    const guild = await this.client.guilds.fetch(guildId);
+    if (!guild) throw new Error("Guild not found.");
+    const channel = await this._resolveChannel(guild, channelId);
+    if (!channel)
+      throw new Error("Channel not found or not text/announcement.");
+
+    const me = await guild.members.fetchMe().catch(() => null);
+    const perms = me ? channel.permissionsFor(me) : null;
+    if (!perms || !perms.has(PermissionFlagsBits.ManageWebhooks)) {
+      throw new Error("Missing permission: Manage Webhooks.");
+    }
+
+    const hooks = await channel.fetchWebhooks().catch(() => null);
+    if (!hooks || !hooks.size) return 0;
+
+    let removed = 0;
+    for (const hook of hooks.values()) {
+      try {
+        await hook.delete("Axiom: Clear Messages (delete webhooks option)");
+        removed++;
+        await new Promise((r) => setTimeout(r, 250));
+      } catch {}
+    }
+    this.log(`🪝 Deleted ${removed} webhook(s) in #${channel?.name}`);
+    return removed;
+  }
+
+  async purgeChannelMessagesAdvanced(opts) {
     const {
       guildId,
       channelId,
       botOnly = true,
       max = 1000,
       deleteOlder = true,
+      deleteWebhooks = false,
     } = opts || {};
     await this._ensureReady();
     if (!guildId || !channelId) throw new Error("guildId/channelId missing.");
@@ -637,16 +667,15 @@ class Bot extends EventEmitter {
     if (!channel)
       throw new Error("Channel not found or not text/announcement.");
 
-    try {
-      const me = await guild.members.fetchMe();
-      const perms = channel.permissionsFor(me);
-      const need = ["ViewChannel", "ReadMessageHistory", "ManageMessages"];
-      const missing = need.filter((p) => !perms?.has?.(PermissionFlagsBits[p]));
-      if (missing.length)
-        throw new Error(`Missing permission(s): ${missing.join(", ")}`);
-    } catch (e) {
-      throw new Error(e?.message || "Permission check failed.");
+    const me = await guild.members.fetchMe();
+    const perms = channel.permissionsFor(me);
+    const need = ["ViewChannel", "ReadMessageHistory", "ManageMessages"];
+    const missing = need.filter((p) => !perms?.has?.(PermissionFlagsBits[p]));
+    if (deleteWebhooks && !perms?.has?.(PermissionFlagsBits.ManageWebhooks)) {
+      missing.push("ManageWebhooks");
     }
+    if (missing.length)
+      throw new Error(`Missing permission(s): ${missing.join(", ")}`);
 
     const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
     const now = Date.now();
@@ -679,9 +708,8 @@ class Bot extends EventEmitter {
         const ids = [...younger.keys()];
         for (let i = 0; i < ids.length; i += 100) {
           const slice = ids.slice(i, i + 100);
-          let res = null;
           try {
-            res = await channel.bulkDelete(slice, true);
+            const res = await channel.bulkDelete(slice, true);
             if (res) deletedBulk += res.size;
             else throw new Error("bulkDelete returned null");
           } catch {
@@ -716,11 +744,22 @@ class Bot extends EventEmitter {
       if (deletedBulk + deletedSingle >= max) break;
     }
 
+    let webhooksDeleted = 0;
+    if (deleteWebhooks) {
+      try {
+        webhooksDeleted = await this._deleteChannelWebhooks(guildId, channelId);
+      } catch (e) {
+        this.log(`⚠️ Webhook delete skipped: ${e?.message || e}`);
+      }
+    }
+
     this.log(
       `🧹 Purge #${channel.name}: scanned=${scanned}, deleted=${
         deletedBulk + deletedSingle
-      } (bulk=${deletedBulk}, single=${deletedSingle})`
+      } (bulk=${deletedBulk}, single=${deletedSingle})` +
+        (deleteWebhooks ? `, webhooksDeleted=${webhooksDeleted}` : "")
     );
+
     return {
       scanned,
       deleted: {
@@ -728,7 +767,12 @@ class Bot extends EventEmitter {
         single: deletedSingle,
         total: deletedBulk + deletedSingle,
       },
+      webhooksDeleted,
     };
+  }
+
+  async purgeChannelMessages(opts) {
+    return this.purgeChannelMessagesAdvanced(opts || {});
   }
 
   async getChannelName(guildId, channelId) {
