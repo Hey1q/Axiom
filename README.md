@@ -29,6 +29,13 @@ If you like this project and want to support me ❤️, you can donate here:
 [![Prisma](https://img.shields.io/badge/Prisma-6.15.0-lightblue)](https://www.prisma.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Modern Discord bot manager for **Windows (EXE)**.  
-Built with Discord.js, Node.js, Electron, and Prisma.  
-Includes tickets, giveaways, logs, and event management.
+## Features
+- 🎟️ Ticket system
+- 🎁 Giveaway manager
+- 📑 Event logs
+- 🖥️ Windows EXE with Electron
+- 🗄️ Database powered by Prisma + PostgreSQL  
+
+...and many more features coming soon! 🚀  
+Currently in **beta** form — development continues as time allows.
+
