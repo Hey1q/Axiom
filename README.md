@@ -21,3 +21,14 @@ If you like this project and want to support me ❤️, you can donate here:
 ### Aircash
 <img width="510" height="421" alt="image" src="https://github.com/user-attachments/assets/6e3b7168-c196-428f-9816-d612e0d63ee2" />
 
+# Axiom
+
+[![Node.js](https://img.shields.io/badge/Node.js-22.x-brightgreen)](https://nodejs.org/)
+[![Discord.js](https://img.shields.io/badge/discord.js-14.21.0-blue)](https://discord.js.org/)
+[![Electron](https://img.shields.io/badge/Electron-36.x-9cf)](https://www.electronjs.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-6.15.0-lightblue)](https://www.prisma.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Modern Discord bot manager for **Windows (EXE)**.  
+Built with Discord.js, Node.js, Electron, and Prisma.  
+Includes tickets, giveaways, logs, and event management.
